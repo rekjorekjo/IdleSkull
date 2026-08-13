@@ -9,9 +9,6 @@ import com.idleskull.app.model.TimerMode
 import com.idleskull.app.model.TimerStatus
 import org.json.JSONArray
 import org.json.JSONObject
-import java.time.LocalDate
-import java.time.ZoneId
-import kotlin.random.Random
 
 class TimerRepository(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -105,46 +102,16 @@ class TimerRepository(context: Context) {
         prefs.edit().putLong(KEY_LAST_COUNTDOWN_MS, durationMs.coerceAtLeast(1_000L)).commit()
     }
 
-    fun clearSessions() = synchronized(lock) {
-        prefs.edit().putString(KEY_SESSIONS, "[]").commit()
+    fun renameSession(id: Long, name: String) = synchronized(lock) {
+        val normalized = name.trim().ifBlank { "未命名" }.take(30)
+        val sessions = loadSessionsUnlocked().map { session ->
+            if (session.id == id) session.copy(name = normalized) else session
+        }
+        saveSessions(sessions)
     }
 
-    fun generateDemoData(now: Long = System.currentTimeMillis()) = synchronized(lock) {
-        val zone = ZoneId.systemDefault()
-        val today = LocalDate.ofInstant(java.time.Instant.ofEpochMilli(now), zone)
-        val random = Random(20260813)
-        val sessions = mutableListOf<SlackingSession>()
-        var id = now
-        for (offset in 0..27) {
-            val day = today.minusDays(offset.toLong())
-            val count = when {
-                offset % 7 == 0 -> 0
-                offset % 5 == 0 -> 3
-                else -> 1 + random.nextInt(2)
-            }
-            repeat(count) { index ->
-                val startHour = 10 + random.nextInt(11)
-                val startMinute = random.nextInt(0, 50)
-                val start = day.atTime(startHour, startMinute)
-                    .atZone(zone).toInstant().toEpochMilli() + index * 40 * 60 * 1000L
-                val duration = (15 + random.nextInt(130)) * 60 * 1000L
-                val split = if (duration > 70 * 60 * 1000L) duration / 2 else duration
-                val first = TimeSegment(start, start + split)
-                val segments = if (split < duration) {
-                    listOf(first, TimeSegment(start + split + 12 * 60 * 1000L, start + duration + 12 * 60 * 1000L))
-                } else listOf(first)
-                sessions += SlackingSession(
-                    id = id++,
-                    mode = if (offset % 4 == 0) TimerMode.COUNT_DOWN else TimerMode.COUNT_UP,
-                    startedAt = segments.first().startAt,
-                    endedAt = segments.last().endAt,
-                    segments = segments,
-                    plannedMs = if (offset % 4 == 0) duration else null,
-                    endReason = EndReason.MANUAL,
-                )
-            }
-        }
-        saveSessions(sessions.sortedByDescending { it.startedAt })
+    fun clearSessions() = synchronized(lock) {
+        prefs.edit().putString(KEY_SESSIONS, "[]").commit()
     }
 
     private fun shouldFinishCountdown(active: ActiveTimer, now: Long): Boolean =
@@ -176,6 +143,7 @@ class TimerRepository(context: Context) {
             endReason = if (active.mode == TimerMode.COUNT_DOWN && active.plannedMs != null && segments.sumOf { it.durationMs } >= active.plannedMs) {
                 EndReason.COUNTDOWN_FINISHED
             } else reason,
+            name = "未命名",
         )
         val sessions = loadSessionsUnlocked().toMutableList().apply { add(0, session) }
         saveSessions(sessions.take(3000))
@@ -232,6 +200,7 @@ class TimerRepository(context: Context) {
         put("segments", encodeSegments(session.segments))
         put("plannedMs", session.plannedMs ?: JSONObject.NULL)
         put("endReason", session.endReason.name)
+        put("name", session.name)
     }
 
     private fun decodeSession(json: JSONObject) = SlackingSession(
@@ -242,6 +211,7 @@ class TimerRepository(context: Context) {
         segments = decodeSegments(json.getJSONArray("segments")),
         plannedMs = if (json.isNull("plannedMs")) null else json.getLong("plannedMs"),
         endReason = EndReason.valueOf(json.getString("endReason")),
+        name = json.optString("name", "未命名").ifBlank { "未命名" },
     )
 
     private fun encodeSegments(segments: List<TimeSegment>) = JSONArray().apply {

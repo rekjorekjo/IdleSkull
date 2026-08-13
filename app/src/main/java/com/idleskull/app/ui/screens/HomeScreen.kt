@@ -50,6 +50,7 @@ import com.idleskull.app.ui.components.PixelButton
 import com.idleskull.app.ui.components.PixelCutShape
 import com.idleskull.app.ui.components.PixelText
 import com.idleskull.app.ui.components.SkullBackdrop
+import com.idleskull.app.ui.components.TimerPixelText
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -78,7 +79,8 @@ fun HomeScreen(viewModel: TimerViewModel) {
             darkMode = viewModel.darkMode,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .size(340.dp),
+                .size(320.dp),
+            alpha = if (viewModel.darkMode) 0.48f else 0.80f,
         )
 
         Column(
@@ -104,17 +106,17 @@ fun HomeScreen(viewModel: TimerViewModel) {
 
             Spacer(Modifier.height(28.dp))
 
-            PixelText(
+            TimerPixelText(
                 text = formatClock(displayMs),
                 fontSize = 42.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
-            Text(
+            PixelText(
                 text = statusLine(active),
-                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
                 textAlign = TextAlign.Center,
             )
 
@@ -161,7 +163,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
                 }
             }
 
-            Spacer(Modifier.height(300.dp))
+            Spacer(Modifier.height(286.dp))
         }
     }
 

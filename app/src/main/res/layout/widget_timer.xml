@@ -3,27 +3,45 @@
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg"
+    android:background="@drawable/widget_bg_light"
     android:orientation="vertical">
 
-    <TextView
-        android:id="@+id/widget_title"
+    <LinearLayout
+        android:id="@+id/widget_title_row"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fontFamily="monospace"
-        android:text="☠  摆烂计时"
-        android:textColor="#171717"
-        android:textSize="13sp"
-        android:textStyle="bold" />
+        android:layout_height="28dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/widget_skull"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:adjustViewBounds="true"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_skull_foreground_v2" />
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="7dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/fusion_pixel_12px_proportional"
+            android:text="摆烂计时"
+            android:textColor="#101010"
+            android:textSize="13sp" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/widget_status"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:fontFamily="monospace"
+        android:layout_marginTop="2dp"
+        android:fontFamily="@font/fusion_pixel_12px_proportional"
         android:text="等待摆烂"
-        android:textColor="#5B5A56"
+        android:textColor="#595959"
         android:textSize="10sp" />
 
     <Chronometer
@@ -31,10 +49,10 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:fontFamily="monospace"
+        android:fontFamily="@font/fusion_pixel_12px_proportional"
         android:gravity="center_vertical"
         android:text="00:00:00"
-        android:textColor="#171717"
+        android:textColor="#101010"
         android:textSize="26sp"
         android:textStyle="bold" />
 
@@ -48,13 +66,12 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:background="@drawable/widget_button_bg"
-            android:fontFamily="monospace"
+            android:background="@drawable/widget_button_light_primary"
+            android:fontFamily="@font/fusion_pixel_12px_proportional"
             android:gravity="center"
             android:text="开始"
             android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:textSize="12sp" />
 
         <Space
             android:id="@+id/widget_gap"
@@ -66,12 +83,11 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:background="@drawable/widget_button_bg"
-            android:fontFamily="monospace"
+            android:background="@drawable/widget_button_light_secondary"
+            android:fontFamily="@font/fusion_pixel_12px_proportional"
             android:gravity="center"
             android:text="结束"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:textColor="#101010"
+            android:textSize="12sp" />
     </LinearLayout>
 </LinearLayout>

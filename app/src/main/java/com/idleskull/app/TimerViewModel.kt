@@ -67,6 +67,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun updateDarkMode(value: Boolean) {
         repository.setDarkMode(value)
         darkMode = value
+        refreshWidget()
     }
 
     fun reload() {
@@ -78,8 +79,8 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         refreshWidget()
     }
 
-    fun generateDemoData() {
-        repository.generateDemoData()
+    fun renameSession(id: Long, name: String) {
+        repository.renameSession(id, name)
         sessions = repository.loadSessions()
     }
 

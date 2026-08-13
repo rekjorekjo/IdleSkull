@@ -1,7 +1,9 @@
 package com.idleskull.app.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,9 +31,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.idleskull.app.TimerViewModel
 import com.idleskull.app.model.SlackingSession
 import com.idleskull.app.ui.StatsEngine
+import com.idleskull.app.ui.components.PixelButton
 import com.idleskull.app.ui.components.PixelChoice
+import com.idleskull.app.ui.components.PixelCutShape
 import com.idleskull.app.ui.components.PixelPanel
 import com.idleskull.app.ui.components.PixelText
 import java.time.Instant
@@ -42,7 +50,8 @@ import java.util.Locale
 private enum class StatsRange { DAY, WEEK, MONTH, YEAR }
 
 @Composable
-fun StatsScreen(sessions: List<SlackingSession>) {
+fun StatsScreen(viewModel: TimerViewModel) {
+    val sessions = viewModel.sessions
     var range by remember { mutableStateOf(StatsRange.DAY) }
     val totals = remember(sessions) { StatsEngine.dailyTotals(sessions) }
 
@@ -51,7 +60,7 @@ fun StatsScreen(sessions: List<SlackingSession>) {
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        PixelText("摆烂统计", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        PixelText("摆烂记录", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(
@@ -67,7 +76,11 @@ fun StatsScreen(sessions: List<SlackingSession>) {
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when (range) {
-                StatsRange.DAY -> DayStats(sessions, totals)
+                StatsRange.DAY -> DayStats(
+                    sessions = sessions,
+                    totals = totals,
+                    onRename = viewModel::renameSession,
+                )
                 StatsRange.WEEK -> WeekStats(totals)
                 StatsRange.MONTH -> MonthStats(totals)
                 StatsRange.YEAR -> YearStats(totals)
@@ -77,7 +90,11 @@ fun StatsScreen(sessions: List<SlackingSession>) {
 }
 
 @Composable
-private fun DayStats(sessions: List<SlackingSession>, totals: Map<LocalDate, Long>) {
+private fun DayStats(
+    sessions: List<SlackingSession>,
+    totals: Map<LocalDate, Long>,
+    onRename: (Long, String) -> Unit,
+) {
     val today = LocalDate.now()
     val todaySessions = StatsEngine.sessionsOnDay(sessions, today)
     val total = totals[today] ?: 0L
@@ -87,9 +104,11 @@ private fun DayStats(sessions: List<SlackingSession>, totals: Map<LocalDate, Lon
     ) {
         item { SummaryPanel("今天", total, todaySessions.size) }
         if (todaySessions.isEmpty()) {
-            item { PixelPanel { Text("今天还没有历史记录。") } }
+            item { PixelPanel { PixelText("今天还没有历史记录。", fontSize = 11.sp) } }
         } else {
-            items(todaySessions) { session -> SessionRow(session) }
+            items(todaySessions, key = { it.id }) { session ->
+                SessionRow(session = session, onRename = onRename)
+            }
         }
     }
 }
@@ -245,17 +264,32 @@ private fun SummaryPanel(title: String, total: Long, activeDaysOrCount: Int) {
                 Spacer(Modifier.height(5.dp))
                 PixelText(formatShort(total), fontSize = 24.sp, fontWeight = FontWeight.Bold)
             }
-            Text("记录 $activeDaysOrCount", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            PixelText(
+                "记录 $activeDaysOrCount",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp,
+            )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SessionRow(session: SlackingSession) {
+private fun SessionRow(
+    session: SlackingSession,
+    onRename: (Long, String) -> Unit,
+) {
+    var showRename by remember(session.id) { mutableStateOf(false) }
     val zone = ZoneId.systemDefault()
     val start = Instant.ofEpochMilli(session.startedAt).atZone(zone)
     val end = Instant.ofEpochMilli(session.endedAt).atZone(zone)
-    PixelPanel {
+
+    PixelPanel(
+        modifier = Modifier.combinedClickable(
+            onClick = {},
+            onLongClick = { showRename = true },
+        ),
+    ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 PixelText(
@@ -264,11 +298,62 @@ private fun SessionRow(session: SlackingSession) {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    if (session.mode.name == "COUNT_DOWN") "倒计时" else "正计时",
+                    session.name.ifBlank { "未命名" },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             PixelText(formatShort(session.durationMs), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+
+    if (showRename) {
+        RenameSessionDialog(
+            initialName = session.name,
+            onDismiss = { showRename = false },
+            onConfirm = { name ->
+                onRename(session.id, name)
+                showRename = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun RenameSessionDialog(
+    initialName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember(initialName) { mutableStateOf(initialName.ifBlank { "未命名" }) }
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = PixelCutShape,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(2.dp, MaterialTheme.colorScheme.outline, PixelCutShape),
+        ) {
+            Column(
+                Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                PixelText("给这次摆烂起个名字", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(30) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = PixelCutShape,
+                    label = { Text("名称") },
+                    placeholder = { Text("未命名") },
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PixelButton("取消", onDismiss, Modifier.weight(1f), inverted = true)
+                    PixelButton("保存", { onConfirm(name.ifBlank { "未命名" }) }, Modifier.weight(1f))
+                }
+            }
         }
     }
 }

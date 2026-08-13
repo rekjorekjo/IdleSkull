@@ -46,30 +46,28 @@ fun IdleSkullApp(viewModel: TimerViewModel = viewModel()) {
 
     IdleSkullTheme(darkMode = viewModel.darkMode) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Box(Modifier.fillMaxSize()) {
-                Column(
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+            ) {
+                Box(Modifier.weight(1f)) {
+                    when (tab) {
+                        MainTab.TIMER -> HomeScreen(viewModel)
+                        MainTab.STATS -> StatsScreen(viewModel)
+                        MainTab.SETTINGS -> SettingsScreen(viewModel)
+                    }
+                }
+                Row(
                     Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
                 ) {
-                    Box(Modifier.weight(1f)) {
-                        when (tab) {
-                            MainTab.TIMER -> HomeScreen(viewModel)
-                            MainTab.STATS -> StatsScreen(viewModel.sessions)
-                            MainTab.SETTINGS -> SettingsScreen(viewModel)
-                        }
-                    }
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.background)
-                            .padding(horizontal = 10.dp, vertical = 8.dp)
-                    ) {
-                        PixelButton("计时", { tab = MainTab.TIMER }, Modifier.weight(1f), inverted = tab != MainTab.TIMER)
-                        PixelButton("统计", { tab = MainTab.STATS }, Modifier.weight(1f), inverted = tab != MainTab.STATS)
-                        PixelButton("设置", { tab = MainTab.SETTINGS }, Modifier.weight(1f), inverted = tab != MainTab.SETTINGS)
-                    }
+                    PixelButton("计时", { tab = MainTab.TIMER }, Modifier.weight(1f), inverted = tab != MainTab.TIMER)
+                    PixelButton("日志", { tab = MainTab.STATS }, Modifier.weight(1f), inverted = tab != MainTab.STATS)
+                    PixelButton("设置", { tab = MainTab.SETTINGS }, Modifier.weight(1f), inverted = tab != MainTab.SETTINGS)
                 }
             }
         }

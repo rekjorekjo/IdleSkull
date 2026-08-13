@@ -1,25 +1,4 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path
-        android:fillColor="@android:color/transparent"
-        android:pathData="M16,91 L92,17 M16,17 L92,91"
-        android:strokeColor="@color/ic_skull_main"
-        android:strokeLineCap="round"
-        android:strokeWidth="8" />
-    <path
-        android:fillColor="@color/ic_skull_main"
-        android:fillType="evenOdd"
-        android:pathData="M54,15 C38,15 27,22 23,35 L20,50 C19,60 25,69 35,74 L34,82 L42,88 L42,95 L48,95 L48,84 L52,84 L52,96 L56,96 L56,84 L60,84 L60,95 L66,95 L66,88 L74,82 L73,74 C83,69 89,60 88,50 L85,35 C81,22 70,15 54,15 Z M32,44 L49,38 L46,54 L37,58 L30,52 Z M76,44 L59,38 L62,54 L71,58 L78,52 Z M54,55 L47,68 L54,72 L61,68 Z" />
-    <path
-        android:fillColor="@color/ic_skull_red"
-        android:pathData="M35,46 L47,42 L45,48 L37,51 Z M73,46 L61,42 L63,48 L71,51 Z M56,18 L51,31 L57,31 L52,44 L65,27 L59,27 L62,18 Z" />
-    <path
-        android:fillColor="@android:color/transparent"
-        android:pathData="M42,76 L66,76 M46,76 L46,87 M52,76 L52,91 M58,76 L58,91 M64,76 L64,87"
-        android:strokeColor="@color/ic_launcher_bg"
-        android:strokeLineCap="square"
-        android:strokeWidth="2.2" />
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_skull_foreground_v2"
+    android:gravity="center" />

@@ -5,7 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.Typeface
+import android.view.Gravity
 import android.view.View
+import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -71,11 +72,11 @@ object PixelCutShape : Shape {
 fun SkullBackdrop(
     darkMode: Boolean,
     modifier: Modifier = Modifier,
-    alpha: Float = if (darkMode) 0.17f else 0.10f,
+    alpha: Float = 0.34f,
 ) {
     androidx.compose.foundation.Image(
         painter = painterResource(
-            if (darkMode) R.drawable.skull_backdrop_dark else R.drawable.skull_backdrop_light,
+            if (darkMode) R.drawable.skull_backdrop_v2_dark else R.drawable.skull_backdrop_v2_light,
         ),
         contentDescription = null,
         modifier = modifier.alpha(alpha),
@@ -83,6 +84,13 @@ fun SkullBackdrop(
     )
 }
 
+/**
+ * Pixel text backed by Fusion Pixel Font when the generated font resource is present.
+ *
+ * The old implementation deliberately rasterised system monospace text at a very low
+ * resolution and enlarged the bitmap. That made dense Chinese strokes merge together.
+ * Fusion Pixel is already a real pixel font, so it is drawn directly instead.
+ */
 @Composable
 fun PixelText(
     text: String,
@@ -106,6 +114,74 @@ fun PixelText(
                 color = colorArgb,
                 textSizePx = sizePx,
                 bold = bold,
+                alignment = textAlign,
+            )
+        },
+    )
+}
+
+
+@Composable
+fun PixelParagraph(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    fontSize: TextUnit = 13.sp,
+    textAlign: TextAlign = TextAlign.Start,
+) {
+    val density = LocalDensity.current
+    val sizePx = with(density) { fontSize.toPx() }
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            TextView(context).apply {
+                includeFontPadding = false
+                setLineSpacing(0f, 1.38f)
+            }
+        },
+        update = { view ->
+            val fontId = view.resources.getIdentifier(
+                "fusion_pixel_12px_proportional",
+                "font",
+                view.context.packageName,
+            )
+            view.typeface = if (fontId != 0) {
+                runCatching { view.resources.getFont(fontId) }.getOrDefault(Typeface.DEFAULT)
+            } else {
+                Typeface.DEFAULT
+            }
+            view.text = text
+            view.setTextColor(color.toArgb())
+            view.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx)
+            view.gravity = when (textAlign) {
+                TextAlign.Center -> Gravity.CENTER_HORIZONTAL
+                TextAlign.End, TextAlign.Right -> Gravity.END
+                else -> Gravity.START
+            }
+        },
+    )
+}
+
+@Composable
+fun TimerPixelText(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    fontSize: TextUnit = 42.sp,
+    fontWeight: FontWeight = FontWeight.Bold,
+    textAlign: TextAlign = TextAlign.Center,
+) {
+    val density = LocalDensity.current
+    val sizePx = with(density) { fontSize.toPx() }
+    AndroidView(
+        modifier = modifier,
+        factory = { context -> LegacyTimerTextView(context) },
+        update = { view ->
+            view.setTimerText(
+                text = text,
+                color = color.toArgb(),
+                textSizePx = sizePx,
+                bold = fontWeight.weight >= FontWeight.SemiBold.weight,
                 alignment = textAlign,
             )
         },
@@ -172,23 +248,29 @@ fun PixelPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 }
 
 private class PixelTextView(context: Context) : View(context) {
+    private val pixelTypeface: Typeface by lazy {
+        val fontId = resources.getIdentifier(
+            "fusion_pixel_12px_proportional",
+            "font",
+            context.packageName,
+        )
+        if (fontId != 0) {
+            runCatching { resources.getFont(fontId) }.getOrDefault(Typeface.DEFAULT)
+        } else {
+            Typeface.DEFAULT
+        }
+    }
+
     private val paint = Paint().apply {
         isAntiAlias = false
         isDither = false
         isSubpixelText = false
         isLinearText = false
-        typeface = Typeface.MONOSPACE
-    }
-    private val bitmapPaint = Paint().apply {
-        isAntiAlias = false
-        isDither = false
-        isFilterBitmap = false
     }
 
     private var value: String = ""
     private var alignment: TextAlign = TextAlign.Start
-    private var cachedBitmap: Bitmap? = null
-    private var bitmapDirty = true
+    private var wantsBold: Boolean = false
 
     fun setPixelText(
         text: String,
@@ -210,20 +292,95 @@ private class PixelTextView(context: Context) : View(context) {
             paint.textSize = textSizePx
             changed = true
         }
-        if (paint.isFakeBoldText != bold) {
-            paint.isFakeBoldText = bold
+        if (wantsBold != bold) {
+            wantsBold = bold
             changed = true
         }
         if (this.alignment != alignment) {
             this.alignment = alignment
             changed = true
         }
+
+        paint.typeface = pixelTypeface
+        // Android's fake bold expands every stroke. On small Han glyphs that can merge
+        // neighbouring pixels, so use it only for Latin/numeric text.
+        paint.isFakeBoldText = wantsBold && value.all { it.code < 0x2E80 }
         contentDescription = text
+
         if (changed) {
-            bitmapDirty = true
             requestLayout()
             invalidate()
         }
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        paint.typeface = pixelTypeface
+        val metrics = paint.fontMetrics
+        val desiredWidth = ceil(paint.measureText(value).toDouble()).toInt() + paddingLeft + paddingRight
+        val desiredHeight = ceil((metrics.bottom - metrics.top).toDouble()).toInt() + paddingTop + paddingBottom
+        setMeasuredDimension(
+            resolveSize(desiredWidth.coerceAtLeast(suggestedMinimumWidth), widthMeasureSpec),
+            resolveSize(desiredHeight.coerceAtLeast(suggestedMinimumHeight), heightMeasureSpec),
+        )
+    }
+
+    override fun onDraw(canvas: android.graphics.Canvas) {
+        super.onDraw(canvas)
+        paint.typeface = pixelTypeface
+        paint.textAlign = when (alignment) {
+            TextAlign.Center -> Paint.Align.CENTER
+            TextAlign.End, TextAlign.Right -> Paint.Align.RIGHT
+            else -> Paint.Align.LEFT
+        }
+
+        val availableHeight = (height - paddingTop - paddingBottom).coerceAtLeast(0)
+        val metrics = paint.fontMetrics
+        val textHeight = metrics.bottom - metrics.top
+        val baseline = paddingTop + (availableHeight - textHeight) / 2f - metrics.top
+        val x = when (alignment) {
+            TextAlign.Center -> width / 2f
+            TextAlign.End, TextAlign.Right -> width - paddingRight.toFloat()
+            else -> paddingLeft.toFloat()
+        }
+        canvas.drawText(value, x, baseline, paint)
+    }
+}
+
+
+/** Keeps the pre-0.2.3 timer-number renderer that the main clock used before. */
+private class LegacyTimerTextView(context: Context) : View(context) {
+    private val paint = Paint().apply {
+        isAntiAlias = false
+        isDither = false
+        isSubpixelText = false
+        isLinearText = false
+        typeface = Typeface.MONOSPACE
+    }
+    private val bitmapPaint = Paint().apply {
+        isAntiAlias = false
+        isDither = false
+        isFilterBitmap = false
+    }
+    private var value = ""
+    private var alignment: TextAlign = TextAlign.Center
+    private var cachedBitmap: Bitmap? = null
+    private var bitmapDirty = true
+
+    fun setTimerText(
+        text: String,
+        color: Int,
+        textSizePx: Float,
+        bold: Boolean,
+        alignment: TextAlign,
+    ) {
+        var changed = false
+        if (value != text) { value = text; changed = true }
+        if (paint.color != color) { paint.color = color; changed = true }
+        if (paint.textSize != textSizePx) { paint.textSize = textSizePx; changed = true }
+        if (paint.isFakeBoldText != bold) { paint.isFakeBoldText = bold; changed = true }
+        if (this.alignment != alignment) { this.alignment = alignment; changed = true }
+        contentDescription = text
+        if (changed) { bitmapDirty = true; requestLayout(); invalidate() }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -252,12 +409,7 @@ private class PixelTextView(context: Context) : View(context) {
         if (width <= 0 || height <= 0) return
         if (bitmapDirty || cachedBitmap == null) rebuildBitmap()
         cachedBitmap?.let { bitmap ->
-            canvas.drawBitmap(
-                bitmap,
-                null,
-                Rect(0, 0, width, height),
-                bitmapPaint,
-            )
+            canvas.drawBitmap(bitmap, null, Rect(0, 0, width, height), bitmapPaint)
         }
     }
 
@@ -276,11 +428,11 @@ private class PixelTextView(context: Context) : View(context) {
             isLinearText = false
         }
         val metrics = lowPaint.fontMetrics
-        val y = paddingTop / pixelScale.toFloat() - metrics.top
+        val y = bitmapHeight / 2f - (metrics.ascent + metrics.descent) / 2f
         val x = when (alignment) {
             TextAlign.Center -> bitmapWidth / 2f
-            TextAlign.End, TextAlign.Right -> bitmapWidth - paddingRight / pixelScale.toFloat()
-            else -> paddingLeft / pixelScale.toFloat()
+            TextAlign.End, TextAlign.Right -> bitmapWidth.toFloat()
+            else -> 0f
         }
         lowPaint.textAlign = when (alignment) {
             TextAlign.Center -> Paint.Align.CENTER

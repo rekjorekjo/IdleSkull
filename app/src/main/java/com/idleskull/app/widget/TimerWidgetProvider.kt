@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.SystemClock
 import android.view.View
 import android.widget.RemoteViews
@@ -42,9 +43,12 @@ class TimerWidgetProvider : AppWidgetProvider() {
         val repo = TimerRepository(context)
         repo.ensureCountdownComplete()
         val active = repo.loadActive()
+        val dark = repo.isDarkMode()
         val views = RemoteViews(context.packageName, R.layout.widget_timer)
         val nowWall = System.currentTimeMillis()
         val nowElapsed = SystemClock.elapsedRealtime()
+
+        applyTheme(views, dark)
 
         val openApp = PendingIntent.getActivity(
             context,
@@ -52,7 +56,7 @@ class TimerWidgetProvider : AppWidgetProvider() {
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        views.setOnClickPendingIntent(R.id.widget_title, openApp)
+        views.setOnClickPendingIntent(R.id.widget_title_row, openApp)
 
         val toggle = PendingIntent.getBroadcast(
             context,
@@ -84,9 +88,12 @@ class TimerWidgetProvider : AppWidgetProvider() {
                     active.status == TimerStatus.PAUSED -> "暂停中"
                     active.mode == TimerMode.COUNT_DOWN -> "倒计时摆烂中"
                     else -> "摆烂中"
-                }
+                },
             )
-            views.setTextViewText(R.id.widget_toggle, if (active.status == TimerStatus.RUNNING) "暂停" else "继续")
+            views.setTextViewText(
+                R.id.widget_toggle,
+                if (active.status == TimerStatus.RUNNING) "暂停" else "继续",
+            )
             views.setViewVisibility(R.id.widget_stop, View.VISIBLE)
             views.setViewVisibility(R.id.widget_gap, View.VISIBLE)
 
@@ -109,6 +116,37 @@ class TimerWidgetProvider : AppWidgetProvider() {
             }
         }
         return views
+    }
+
+    private fun applyTheme(views: RemoteViews, dark: Boolean) {
+        val main = if (dark) Color.rgb(241, 238, 230) else Color.rgb(16, 16, 16)
+        val secondary = if (dark) Color.rgb(174, 174, 170) else Color.rgb(89, 89, 89)
+        val primaryText = if (dark) Color.rgb(16, 16, 16) else Color.WHITE
+
+        views.setInt(
+            R.id.widget_root,
+            "setBackgroundResource",
+            if (dark) R.drawable.widget_bg_dark else R.drawable.widget_bg_light,
+        )
+        views.setImageViewResource(
+            R.id.widget_skull,
+            if (dark) R.drawable.skull_backdrop_v2_dark else R.drawable.skull_backdrop_v2_light,
+        )
+        views.setTextColor(R.id.widget_title, main)
+        views.setTextColor(R.id.widget_status, secondary)
+        views.setTextColor(R.id.widget_chronometer, main)
+        views.setInt(
+            R.id.widget_toggle,
+            "setBackgroundResource",
+            if (dark) R.drawable.widget_button_dark_primary else R.drawable.widget_button_light_primary,
+        )
+        views.setTextColor(R.id.widget_toggle, primaryText)
+        views.setInt(
+            R.id.widget_stop,
+            "setBackgroundResource",
+            if (dark) R.drawable.widget_button_dark_secondary else R.drawable.widget_button_light_secondary,
+        )
+        views.setTextColor(R.id.widget_stop, main)
     }
 
     companion object {

@@ -1,5 +1,4 @@
 <resources>
-    <color name="ic_launcher_bg">#EFE8DA</color>
-    <color name="ic_skull_main">#151515</color>
-    <color name="ic_skull_red">#A60D1C</color>
+    <color name="ic_launcher_bg">#F0EDE4</color>
+    <color name="ic_skull_main">#000000</color>
 </resources>

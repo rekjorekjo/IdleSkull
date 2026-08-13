@@ -55,6 +55,7 @@ data class SlackingSession(
     val segments: List<TimeSegment>,
     val plannedMs: Long?,
     val endReason: EndReason,
+    val name: String = "未命名",
 ) {
     val durationMs: Long get() = segments.sumOf { it.durationMs }
 }
