@@ -59,6 +59,7 @@ fun AboutScreen(
     val uriHandler = LocalUriHandler.current
     var document by remember { mutableStateOf<AboutDocument?>(null) }
     var updateStatus by remember { mutableStateOf("手动检查") }
+    var updateError by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
     var availableUpdate by remember { mutableStateOf<UpdateCheckResult.Available?>(null) }
     var updateDownloadState by remember { mutableStateOf<UpdateDownloadState?>(null) }
@@ -160,23 +161,39 @@ fun AboutScreen(
                     onClick = {
                         checking = true
                         updateStatus = "正在检查…"
+                        updateError = null
                         availableUpdate = null
                         // A manual check always performs a fresh request. It does not reuse
                         // the silent startup check or any cached result.
                         AppUpdateChecker.checkNow(context) { result ->
                             checking = false
                             when (result) {
-                                UpdateCheckResult.UpToDate -> updateStatus = "已是最新版本"
+                                UpdateCheckResult.UpToDate -> {
+                                    updateStatus = "已是最新版本"
+                                    updateError = null
+                                }
                                 is UpdateCheckResult.Available -> {
                                     updateStatus = "发现 ${result.versionName}"
+                                    updateError = null
                                     updateDownloadState = null
                                     availableUpdate = result
                                 }
-                                is UpdateCheckResult.Failed -> updateStatus = "检查失败"
+                                is UpdateCheckResult.Failed -> {
+                                    updateStatus = "检查失败"
+                                    updateError = result.message
+                                }
                             }
                         }
                     },
                 )
+                updateError?.let { message ->
+                    PixelText(
+                        text = message,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 9.sp,
+                    )
+                }
                 AboutDivider()
                 AboutRow("更新说明") { document = AboutDocument.UPDATE_NOTES }
                 AboutDivider()

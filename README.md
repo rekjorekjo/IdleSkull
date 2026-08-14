@@ -14,7 +14,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-Releases-181717?style=for-the-badge&logo=github&logoColor=white)](#更新机制)
 
 ![Version](https://img.shields.io/badge/version-0.2.19--beta-F2B134?style=flat-square)
-![versionCode](https://img.shields.io/badge/versionCode-22-555555?style=flat-square)
+![versionCode](https://img.shields.io/badge/versionCode-23-555555?style=flat-square)
 ![Status](https://img.shields.io/badge/status-Beta-E67E22?style=flat-square)
 ![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?style=flat-square)
 ![targetSdk](https://img.shields.io/badge/targetSdk-36-3DDC84?style=flat-square)
@@ -176,22 +176,22 @@ IdleSkull 的在线更新只认 **GitHub Release 里的 `latest.json` 资产**�
 检查流程：
 
 ```text
-GitHub Releases API
+GitHub Releases Atom feed
         ↓
-选取 published_at 最新的已发布 Release（包含 prerelease）
+读取最前面的已发布 Release entry（包含 prerelease）
         ↓
-读取该 Release 资产中的 latest.json
+直接请求 /releases/download/<tag>/latest.json
         ↓
 比较 versionCode
         ↓
 有新版本 → 系统通知 / 手动检查结果 → 用户点击后下载 APK
 ```
 
-这里刻意不使用 GitHub 的 `/releases/latest` 接口，因为该接口只返回最新的非 prerelease 正式版本；IdleSkull 的 beta 版本会作为 prerelease 发布。程序会从公开 Releases 列表中选取 `published_at` 最新的 Release，因此 beta 也能正常检测。
+这里刻意不使用 GitHub 的 `/releases/latest` 接口，因为该接口只返回最新的非 prerelease 正式版本；IdleSkull 的 beta 版本会作为 prerelease 发布。也不再调用匿名 GitHub REST Releases API：客户端只借助公开 `releases.atom` 确定最新发布 tag，真正的版本信息仍以该 Release 自带的 `latest.json` 为唯一真相。
 
 `latest.json` 是发布资产中的唯一更新清单。最新 Release 如果缺少该文件，更新检查会直接失败，而不会偷偷退回旧 Release 或仓库主分支中的旧清单，避免再次出现“明明发了新版但客户端读到旧版本”的情况。
 
-更新比较始终只使用递增的整数 **`versionCode`**；`versionName` 仅用于展示。启动自动检查只在发现新版本时通知，不会后台偷跑下载；手动“检查更新”每次都会重新请求，不复用启动检查状态。发现新版后，“下载并安装”会直接读取 `latest.json` 中的 `apk.url` 下载 APK，并使用清单中的 `size` / `sha256` 校验文件，校验通过后交给 Android 系统安装程序。请求禁用本地缓存并带 cache-busting 参数。
+更新比较始终只使用递增的整数 **`versionCode`**；`versionName` 仅用于展示。启动自动检查只在发现新版本时通知，不会后台偷跑下载；手动“检查更新”每次都会重新请求，不复用启动检查状态，也不会把一次失败缓存成后续检查结果。Release 发现不再调用 GitHub REST API，而是读取公开的 `releases.atom` feed，再直接请求最新 Release 的 `latest.json`，避免匿名 REST API 限流造成连续失败。发现新版后，“下载并安装”会读取 `latest.json` 中的 `apk.url` 下载 APK，并使用清单中的 `size` / `sha256` 校验文件，校验通过后交给 Android 系统安装程序。请求禁用本地缓存。
 
 发布时执行 `scripts/release.py`，生成：
 
@@ -214,8 +214,8 @@ X.Y.Z
 当前版本：
 
 ```properties
-versionCode=22
-versionName=0.2.19-beta
+versionCode=23
+versionName=0.2.20-beta
 ```
 
 更新判断只比较递增的 **`versionCode`**；`versionName` 负责用户可读的版本展示。

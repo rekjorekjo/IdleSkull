@@ -4,11 +4,13 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.util.Xml
 import com.idleskull.app.BuildConfig
-import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.io.StringReader
+import org.xmlpull.v1.XmlPullParser
 
 internal data class AvailableUpdate(
     val versionCode: Int,
@@ -102,61 +104,55 @@ object AppUpdateChecker {
     /**
      * GitHub Release assets are the single source of truth for update checks.
      *
-     * We intentionally do NOT use GitHub's `/releases/latest` endpoint because it ignores
-     * prereleases, while IdleSkull beta builds are published as prereleases. Instead we list
-     * published releases, pick the one with the newest published_at timestamp (prereleases
-     * included), and read that release's `latest.json` asset directly.
+     * Release discovery intentionally avoids the unauthenticated GitHub REST API. The app reads
+     * GitHub's public releases Atom feed, takes the first published release entry (prereleases are
+     * included), then fetches that release's immutable `latest.json` asset directly.
+     *
+     * A failed request is never persisted as update state: every startup/manual check starts a new
+     * feed + manifest request sequence.
      */
     private fun fetchLatest(): AvailableUpdate = fetchNewestPublishedReleaseManifest()
 
     private fun fetchNewestPublishedReleaseManifest(): AvailableUpdate {
-        val body = requestText(
-            url = UpdateConfig.RELEASES_API_URL,
-            accept = "application/vnd.github+json",
+        val feed = requestText(
+            url = UpdateConfig.RELEASES_FEED_URL,
+            accept = "application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.7",
             cacheBust = true,
         )
-        val releases = JSONArray(body)
-        require(releases.length() > 0) { "GitHub 暂无已发布 Release" }
-
-        var newestRelease: JSONObject? = null
-        var newestPublishedAt = Long.MIN_VALUE
-        for (index in 0 until releases.length()) {
-            val release = releases.optJSONObject(index) ?: continue
-            if (release.optBoolean("draft", false)) continue
-            val publishedAt = release.optString("published_at")
-            if (publishedAt.isBlank()) continue
-            val publishedEpoch = runCatching { java.time.Instant.parse(publishedAt).toEpochMilli() }
-                .getOrNull() ?: continue
-            if (publishedEpoch > newestPublishedAt) {
-                newestPublishedAt = publishedEpoch
-                newestRelease = release
-            }
-        }
-
-        val release = newestRelease ?: error("GitHub 暂无可用的已发布 Release")
-        val tagName = release.optString("tag_name")
-        require(tagName.isNotBlank()) { "最新 Release 缺少 tag_name" }
-        val assets = release.optJSONArray("assets")
-            ?: error("最新 Release $tagName 没有 assets")
-
-        var manifestUrl: String? = null
-        for (index in 0 until assets.length()) {
-            val asset = assets.optJSONObject(index) ?: continue
-            if (asset.optString("name") != UpdateConfig.RELEASE_MANIFEST_ASSET_NAME) continue
-            val downloadUrl = asset.optString("browser_download_url")
-            if (downloadUrl.isNotBlank()) {
-                manifestUrl = downloadUrl
-                break
-            }
-        }
-        val url = manifestUrl
-            ?: error("最新 Release $tagName 缺少 ${UpdateConfig.RELEASE_MANIFEST_ASSET_NAME}")
-
-        val manifest = fetchManifest(url, cacheBust = true)
+        val tagName = newestPublishedTagFromFeed(feed)
+        val manifestUrl =
+            UpdateConfig.RELEASE_DOWNLOAD_BASE_URL + tagName + "/" + UpdateConfig.RELEASE_MANIFEST_ASSET_NAME
+        val manifest = fetchManifest(manifestUrl, cacheBust = false)
         require(manifest.tagName == tagName) {
             "Release $tagName 的 latest.json 指向 ${manifest.tagName}"
         }
         return manifest
+    }
+
+    private fun newestPublishedTagFromFeed(feed: String): String {
+        val parser = Xml.newPullParser().apply {
+            setInput(StringReader(feed))
+        }
+        var event = parser.eventType
+        var insideEntry = false
+        while (event != XmlPullParser.END_DOCUMENT) {
+            when (event) {
+                XmlPullParser.START_TAG -> when (parser.name) {
+                    "entry" -> insideEntry = true
+                    "link" -> if (insideEntry) {
+                        val href = parser.getAttributeValue(null, "href").orEmpty()
+                        val rel = parser.getAttributeValue(null, "rel").orEmpty()
+                        if ((rel.isBlank() || rel == "alternate") && href.contains("/releases/tag/")) {
+                            val tag = href.substringAfterLast('/').substringBefore('?').trim()
+                            if (tag.isNotBlank()) return tag
+                        }
+                    }
+                }
+                XmlPullParser.END_TAG -> if (parser.name == "entry") insideEntry = false
+            }
+            event = parser.next()
+        }
+        error("GitHub Releases feed 中没有可用的已发布 Release")
     }
 
     private fun fetchManifest(url: String, cacheBust: Boolean): AvailableUpdate {

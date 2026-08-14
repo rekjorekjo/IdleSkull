@@ -37,7 +37,8 @@ IdleSkull 使用说明
 
 
 应用更新
-• App 启动时会静默检查最新 GitHub Release；发现新版时只提醒，不会在后台自动下载。
+• App 启动时会静默检查最新 GitHub Release；发现新版时只提醒，不会在后台自动下载。更新发现使用 GitHub Releases feed，并直接读取最新 Release 中的 latest.json，不依赖匿名 REST API。
 • 关于页点击“检查更新”后，如发现新版本，可点击“下载并安装”直接下载 Release 中的 APK。
+• 手动检查每次都会重新请求；一次失败不会被保存成后续结果。检查失败时，“关于”页会显示具体错误信息，方便判断是网络、Release 清单还是服务器响应问题。
 • 下载时会校验 latest.json 提供的文件大小和 SHA-256；校验通过后打开 Android 系统安装程序，由系统完成最终安装确认。
 • 如果当前安装的是 Debug APK，而 GitHub Release 使用了不同签名，系统可能不允许直接覆盖安装，需要先卸载 Debug 版或使用相同签名构建。
