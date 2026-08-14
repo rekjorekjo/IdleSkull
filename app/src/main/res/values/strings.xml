@@ -4,18 +4,18 @@
     <string name="widget_name">计时器</string>
 
     <!-- 可直接修改的常用文案。改这里即可统一调整主要页面文字。 -->
-    <string name="copy_home_title">今天你又摆烂了？</string>
-    <string name="copy_home_idle">还没开始。至少现在没有。</string>
-    <string name="copy_home_running">摆烂计时中</string>
-    <string name="copy_home_countdown_running">倒计时摆烂中</string>
-    <string name="copy_home_paused">摆烂暂停中</string>
-    <string name="copy_start">开始摆烂</string>
-    <string name="copy_pause">暂停</string>
-    <string name="copy_resume">继续</string>
-    <string name="copy_end">结束摆烂</string>
+    <string name="copy_home_title">你又要开始摆烂了？</string>
+    <string name="copy_home_idle">还没有。至少现在没有。</string>
+    <string name="copy_home_running">摆烂中...</string>
+    <string name="copy_home_countdown_running">摆烂中...（倒计时）</string>
+    <string name="copy_home_paused">暂停摆烂</string>
+    <string name="copy_start">开摆！</string>
+    <string name="copy_pause">暂停摆烂</string>
+    <string name="copy_resume">继续摆烂</string>
+    <string name="copy_end">结束</string>
     <string name="copy_count_up">正计时</string>
     <string name="copy_count_down">倒计时</string>
-    <string name="copy_countdown_dialog_title">设置摆烂时间</string>
+    <string name="copy_countdown_dialog_title">设置倒计时时间</string>
     <string name="copy_cancel">取消</string>
     <string name="copy_confirm">确定</string>
     <string name="copy_hour">时</string>
@@ -27,26 +27,26 @@
     <string name="copy_export_footer">今天你又摆烂了？ · IdleSkull</string>
     <string name="copy_unnamed">未命名</string>
 
-    <string name="copy_widget_title">摆烂计时</string>
-    <string name="copy_widget_waiting">等待摆烂</string>
-    <string name="copy_widget_running">摆烂中</string>
-    <string name="copy_widget_paused">暂停中</string>
-    <string name="copy_widget_countdown_running">倒计时摆烂中</string>
-    <string name="copy_widget_start">开始</string>
+    <string name="copy_widget_title">摆烂计时器</string>
+    <string name="copy_widget_waiting">暂未摆烂</string>
+    <string name="copy_widget_running">摆烂中...</string>
+    <string name="copy_widget_paused">暂停摆烂</string>
+    <string name="copy_widget_countdown_running">摆烂中...（倒计时）</string>
+    <string name="copy_widget_start">开摆！</string>
     <string name="copy_widget_stop">结束</string>
     <string name="copy_nav_timer">计时</string>
     <string name="copy_nav_log">日志</string>
     <string name="copy_nav_settings">设置</string>
     <string name="copy_settings_title">设置</string>
-    <string name="copy_export_style_title">选择导出样式</string>
+    <string name="copy_export_style_title">选择导出风格</string>
     <string name="copy_export_mono">黑白</string>
     <string name="copy_export_color">彩色</string>
-    <string name="copy_empty_day">这一天还没有历史记录。</string>
+    <string name="copy_empty_day">这一天还没有摆烂记录。</string>
 
     <string name="copy_update_found">发现新版本</string>
     <string name="copy_update_download_install">下载并安装</string>
     <string name="copy_update_downloading">正在下载 %1$d%%</string>
     <string name="copy_update_launching_installer">正在打开安装程序…</string>
     <string name="copy_update_download_failed_retry">下载失败 · 重试</string>
-    <string name="copy_update_open_release">打开 GitHub Release</string>
+    <string name="copy_update_open_release">打开 GitHub/string>
 </resources>
