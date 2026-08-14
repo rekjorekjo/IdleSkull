@@ -101,19 +101,6 @@ IdleSkull 采用黑白骷髅 + 像素 UI 的视觉语言：
 
 因此第一次构建需要能够访问 GitHub；后续会复用本地缓存。
 
-### 中文像素字体候选
-
-目前 App 继续使用 Fusion Pixel Font，最终字体尚未锁死。建议优先在官方在线 Playground 中用 IdleSkull 的真实中文文案进行对比：
-
-- **[Fusion Pixel Font / 缝合像素字体](https://fusion-pixel-font.takwolf.com/playground.html)**：当前默认，汉字覆盖最适合现阶段直接使用。
-- **[Ark Pixel Font / 方舟像素字体](https://ark-pixel-font.takwolf.com/playground.html)**：字形更统一、更干净，但上游仍提示 8 / 10 / 12px 汉字覆盖尚未完整。
-- **[Capsule Pixel Font / 胶囊像素字体](https://capsule-pixel-font.takwolf.com/)**：瘦高圆体，更有游戏 UI 味道。
-- **[Jelly Pixel Font / 果冻像素字体](https://jelly-pixel-font.takwolf.com/)**：圆体像素风，视觉更柔和。
-- **[Zpix / 最像素](https://github.com/SolidZORO/zpix-pixel-font)**：中文覆盖广、游戏感强，但其仓库授权说明并非 OFL，商业发布前必须单独确认授权，因此暂不直接集成。
-- **[IPix / 中文像素字体](https://purestudio.itch.io/ipix)**：视觉很符合复古游戏，但其作者发布页明确提醒 HZK16 来源字模可能并非公有领域、作者本身也未必拥有字模版权，因此 IdleSkull **不会把 IPix 字体文件打进 APK**。
-
-最终选择以 **中文小字号是否糊、按钮中文字形是否稳定、长文本可读性** 为优先级，而不是单纯追求“最像素”。
-
 ## 桌面小组件
 
 「计时器」小组件与 App 共用同一套计时状态，支持：
@@ -278,29 +265,6 @@ IdleSkull/
 > [!NOTE]
 > 字体下载任务的输出通过 AGP Variant API 注册为 generated Android resources，因此资源合并会自动依赖对应任务；无需手动给 `merge*Resources` 添加依赖。
 
-## Beta 测试重点
-
-- 长时间计时准确性
-- 多次暂停 / 继续后的有效时长
-- 跨午夜记录拆分
-- 进程结束后的计时恢复
-- 倒计时切后台 / 锁屏行为
-- App 与桌面小组件的状态一致性
-- 深浅色主题与骷髅素材显示
-- Fusion Pixel 中文在不同屏幕密度下的可读性
-- 日志重命名的保存与恢复
-- 历史日期切换与跨月 / 跨年统计
-- PNG 数据图导出的布局与可读性
-- 小米 / HyperOS 等 OEM 桌面的 2×2 小组件加载与操作
-- 自动 / 手动更新检查
-
-## 暂不计划
-
-- 小米 / vivo / OPPO / 荣耀等厂商岛能力
-- 后台静默下载或静默安装 APK（下载必须由用户主动点击，安装继续由 Android 系统确认）
-- 账号系统
-- 云同步
-
 ## 第三方组件
 
 Fusion Pixel Font Copyright © TakWolf and contributors，按 **SIL Open Font License 1.1** 使用。字体许可文本会随构建资源打包进 App，并可在「关于 → 字体许可」中查看。
@@ -314,7 +278,3 @@ Fusion Pixel Font Copyright © TakWolf and contributors，按 **SIL Open Font Li
 
 </div>
 
-
-## 文案编辑
-
-常用界面文案集中在 `app/src/main/res/values/strings.xml`，可直接修改后重新构建。
