@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import com.idleskull.app.data.TimerRepository
+import com.idleskull.app.debug.DebugDataSeeder
 import com.idleskull.app.model.ActiveTimer
 import com.idleskull.app.model.EndReason
 import com.idleskull.app.model.SlackingSession
@@ -25,6 +26,10 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
     var lastCountdownMs: Long by mutableStateOf(repository.lastCountdownMs())
         private set
+
+    /** Debug builds overlay deterministic sample history for charts without touching local data. */
+    val statsSessions: List<SlackingSession>
+        get() = DebugDataSeeder.mergeForStats(sessions)
 
     fun startCountUp() {
         active = repository.startCountUp()

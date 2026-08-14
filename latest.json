@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "tagName": "v0.2.2-beta",
-  "versionName": "0.2.2-beta",
-  "versionCode": 5,
-  "releaseNotes": "# IdleSkull 0.2.2-beta\n\n- 首页主计时数字恢复为上一版的等宽像素化文字方案。\n- “耻辱墙”统一更名为“日志”，记录长按命名功能保持不变。\n- 关于页移除底部调试/占位性质文字。\n- 完全移除内置演示数据生成代码，测试版不再携带测试数据入口或生成逻辑。\n- App 图标与主页骷髅重新制作：改用更写实、更惊悚的黑白海盗骷髅与交叉骨，不再使用红色装饰；浅色模式为黑色骷髅，深色模式为白色骷髅。\n- 版本更新为 0.2.2-beta（versionCode 5），继续使用 X.Y.Z-beta / X.Y.Z 规则并以 versionCode 判断更新。\n",
+  "tagName": "v0.2.3-beta",
+  "versionName": "0.2.3-beta",
+  "versionCode": 6,
+  "releaseNotes": "# IdleSkull 0.2.3-beta\n\n- “日志”页顶部标题调整为“摆烂记录”，底部导航仍保持“日志”。\n- 修正更新检查流程：启动时继续静默检查；关于页只有用户主动点击后才显示检查结果，并对 `latest.json` 使用无缓存请求，降低 GitHub Raw/CDN 缓存导致版本判断滞后的概率。\n- 中文像素字体改用开源 Fusion Pixel Font 12px Proportional 简体中文字形；首页主计时数字保留上一版的数字渲染风格，避免中文与数字一起被强行套用普通等宽字体。\n- 关于页的更新说明、使用说明、隐私说明、开源组件和字体许可改为独立可滚动页面，不再使用长文本弹窗。\n- 主页和 App 图标的骷髅素材去除海盗旗，只保留写实骷髅头与交叉骨；App 图标放大骷髅头并缩小骨头。浅色模式使用独立高对比黑色素材，深色模式使用独立白色素材。\n- 桌面“计时器”小组件重新适配深浅色主题，加入骷髅标识、接入同一套中文像素字体，并继续支持开始、暂停、继续和结束。\n- 保持不内置任何演示/测试数据。\n- 版本更新为 0.2.3-beta（versionCode 6）。\n",
   "apk": {
-    "name": "IdleSkull-v0.2.2-beta.apk",
-    "url": "https://github.com/rekjorekjo/IdleSkull/releases/download/v0.2.2-beta/IdleSkull-v0.2.2-beta.apk",
-    "size": 9438289,
-    "sha256": "cb574cf3efc459aa548585b98031222fbbdc4566d47cf1f6616fe5fc4780967e"
+    "name": "IdleSkull-v0.2.3-beta.apk",
+    "url": "https://github.com/rekjorekjo/IdleSkull/releases/download/v0.2.3-beta/IdleSkull-v0.2.3-beta.apk",
+    "size": 10260001,
+    "sha256": "ab0390875329f69133066a0aa5a8771052693cd7b5d6a65423141d56744de3a1"
   }
 }

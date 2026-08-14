@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,7 +52,7 @@ fun SettingsScreen(viewModel: TimerViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         PixelText(
-            text = "设置",
+            text = stringResource(com.idleskull.app.R.string.copy_settings_title),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
         )

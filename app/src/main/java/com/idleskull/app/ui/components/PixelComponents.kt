@@ -5,8 +5,12 @@ import android.graphics.Bitmap
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.Typeface
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
+import android.widget.EditText
 import android.widget.TextView
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,6 +18,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -188,6 +193,54 @@ fun TimerPixelText(
     )
 }
 
+
+@Composable
+fun PixelInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    numeric: Boolean = false,
+    textAlign: TextAlign = TextAlign.Center,
+) {
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    val bgColor = MaterialTheme.colorScheme.surface
+    val outline = MaterialTheme.colorScheme.outline
+
+    Box(
+        modifier = modifier
+            .height(48.dp)
+            .clip(PixelCutShape)
+            .background(bgColor, PixelCutShape)
+            .border(2.dp, outline, PixelCutShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        AndroidView(
+            modifier = Modifier.fillMaxWidth(),
+            factory = { context ->
+                PixelEditText(context).apply {
+                    setPadding(12.dpToPx(context), 0, 12.dpToPx(context), 0)
+                    this.background = null
+                    includeFontPadding = false
+                    isSingleLine = true
+                    inputType = if (numeric) {
+                        InputType.TYPE_CLASS_NUMBER
+                    } else {
+                        InputType.TYPE_CLASS_TEXT
+                    }
+                }
+            },
+            update = { view ->
+                view.onValueChanged = onValueChange
+                view.setPixelStyle(
+                    color = textColor,
+                    alignment = textAlign,
+                )
+                view.setValue(value)
+            },
+        )
+    }
+}
+
 @Composable
 fun PixelButton(
     text: String,
@@ -246,6 +299,57 @@ fun PixelPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
             .padding(14.dp),
     ) { content() }
 }
+
+
+private class PixelEditText(context: Context) : EditText(context) {
+    var onValueChanged: (String) -> Unit = {}
+    private var internalChange = false
+
+    private val pixelTypeface: Typeface by lazy {
+        val fontId = resources.getIdentifier(
+            "fusion_pixel_12px_proportional",
+            "font",
+            context.packageName,
+        )
+        if (fontId != 0) {
+            runCatching { resources.getFont(fontId) }.getOrDefault(Typeface.DEFAULT)
+        } else {
+            Typeface.DEFAULT
+        }
+    }
+
+    init {
+        addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (!internalChange) onValueChanged(s?.toString().orEmpty())
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
+    }
+
+    fun setPixelStyle(color: Int, alignment: TextAlign) {
+        typeface = pixelTypeface
+        setTextColor(color)
+        setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
+        gravity = when (alignment) {
+            TextAlign.Center -> Gravity.CENTER
+            TextAlign.End, TextAlign.Right -> Gravity.END or Gravity.CENTER_VERTICAL
+            else -> Gravity.START or Gravity.CENTER_VERTICAL
+        }
+    }
+
+    fun setValue(value: String) {
+        if (text?.toString() == value) return
+        internalChange = true
+        setText(value)
+        setSelection(text?.length ?: 0)
+        internalChange = false
+    }
+}
+
+private fun Int.dpToPx(context: Context): Int =
+    (this * context.resources.displayMetrics.density).toInt()
 
 private class PixelTextView(context: Context) : View(context) {
     private val pixelTypeface: Typeface by lazy {

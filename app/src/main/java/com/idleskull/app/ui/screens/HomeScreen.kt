@@ -1,5 +1,6 @@
 package com.idleskull.app.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -34,12 +37,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import com.idleskull.app.TimerViewModel
 import com.idleskull.app.model.ActiveTimer
@@ -62,6 +68,12 @@ fun HomeScreen(viewModel: TimerViewModel) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val selectedMode = TimerMode.valueOf(selectedModeName)
     val active = viewModel.active
+    val homeStatus = when {
+        active == null -> stringResource(com.idleskull.app.R.string.copy_home_idle)
+        active.status == TimerStatus.PAUSED -> stringResource(com.idleskull.app.R.string.copy_home_paused)
+        active.mode == TimerMode.COUNT_DOWN -> stringResource(com.idleskull.app.R.string.copy_home_countdown_running)
+        else -> stringResource(com.idleskull.app.R.string.copy_home_running)
+    }
 
     LaunchedEffect(active?.status, active?.anchorAt, active?.plannedMs) {
         while (true) {
@@ -75,6 +87,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
     val todayTotal = StatsEngine.today(viewModel.sessions) + activeTodayContribution(active, now)
 
     Box(Modifier.fillMaxSize()) {
+        val effectStage = activeSkullEffectStage(active, now)
         SkullBackdrop(
             darkMode = viewModel.darkMode,
             modifier = Modifier
@@ -82,6 +95,15 @@ fun HomeScreen(viewModel: TimerViewModel) {
                 .size(320.dp),
             alpha = if (viewModel.darkMode) 0.48f else 0.80f,
         )
+        if (effectStage > 0) {
+            SkullRedEyeOverlay(
+                stage = effectStage,
+                now = now,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .size(320.dp),
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -91,7 +113,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             PixelText(
-                text = "今天你又摆烂了？",
+                text = stringResource(com.idleskull.app.R.string.copy_home_title),
                 fontSize = 25.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
@@ -114,7 +136,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
             )
             Spacer(Modifier.height(8.dp))
             PixelText(
-                text = statusLine(active),
+                text = homeStatus,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center,
@@ -134,7 +156,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
 
             if (active == null) {
                 PixelButton(
-                    text = "开始摆烂",
+                    text = stringResource(com.idleskull.app.R.string.copy_start),
                     onClick = {
                         if (selectedMode == TimerMode.COUNT_UP) {
                             viewModel.startCountUp()
@@ -150,13 +172,13 @@ fun HomeScreen(viewModel: TimerViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     PixelButton(
-                        text = if (active.status == TimerStatus.RUNNING) "暂停" else "继续",
+                        text = if (active.status == TimerStatus.RUNNING) stringResource(com.idleskull.app.R.string.copy_pause) else stringResource(com.idleskull.app.R.string.copy_resume),
                         onClick = viewModel::pauseOrResume,
                         modifier = Modifier.weight(1f),
                         inverted = true,
                     )
                     PixelButton(
-                        text = "结束摆烂",
+                        text = stringResource(com.idleskull.app.R.string.copy_end),
                         onClick = viewModel::end,
                         modifier = Modifier.weight(1f),
                     )
@@ -209,9 +231,9 @@ private fun TimerModeSelector(
         ) {
             PixelText(
                 text = if (mode == TimerMode.COUNT_UP) {
-                    "正计时"
+                    stringResource(com.idleskull.app.R.string.copy_count_up)
                 } else {
-                    "倒计时 · ${formatClock(countdownMs)}"
+                    "${stringResource(com.idleskull.app.R.string.copy_count_down)} · ${formatClock(countdownMs)}"
                 },
                 color = foreground,
                 fontSize = 13.sp,
@@ -239,7 +261,7 @@ private fun TimerModeSelector(
             DropdownMenuItem(
                 text = {
                     PixelText(
-                        text = "正计时",
+                        text = stringResource(com.idleskull.app.R.string.copy_count_up),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -252,7 +274,7 @@ private fun TimerModeSelector(
             DropdownMenuItem(
                 text = {
                     PixelText(
-                        text = "倒计时",
+                        text = stringResource(com.idleskull.app.R.string.copy_count_down),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                     )
@@ -298,7 +320,7 @@ private fun CountdownDurationDialog(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 PixelText(
-                    text = "设置摆烂时间",
+                    text = stringResource(com.idleskull.app.R.string.copy_countdown_dialog_title),
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
@@ -309,20 +331,20 @@ private fun CountdownDurationDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    DurationField("时", hours, Modifier.weight(1f)) { hours = sanitizeNumber(it, 2) }
+                    DurationField(stringResource(com.idleskull.app.R.string.copy_hour), hours, Modifier.weight(1f)) { hours = sanitizeNumber(it, 2) }
                     Spacer(Modifier.width(8.dp))
-                    DurationField("分", minutes, Modifier.weight(1f)) { minutes = sanitizeNumber(it, 2) }
+                    DurationField(stringResource(com.idleskull.app.R.string.copy_minute), minutes, Modifier.weight(1f)) { minutes = sanitizeNumber(it, 2) }
                     Spacer(Modifier.width(8.dp))
-                    DurationField("秒", seconds, Modifier.weight(1f)) { seconds = sanitizeNumber(it, 2) }
+                    DurationField(stringResource(com.idleskull.app.R.string.copy_second), seconds, Modifier.weight(1f)) { seconds = sanitizeNumber(it, 2) }
                 }
 
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    PixelButton("取消", onDismiss, Modifier.weight(1f), inverted = true)
+                    PixelButton(stringResource(com.idleskull.app.R.string.copy_cancel), onDismiss, Modifier.weight(1f), inverted = true)
                     PixelButton(
-                        text = "确定",
+                        text = stringResource(com.idleskull.app.R.string.copy_confirm),
                         onClick = { onConfirm(durationMs) },
                         modifier = Modifier.weight(1f),
                         enabled = durationMs > 0L,
@@ -363,6 +385,74 @@ private fun DurationField(
 private fun sanitizeNumber(raw: String, maxDigits: Int): String =
     raw.filter(Char::isDigit).take(maxDigits)
 
+
+@Composable
+private fun SkullRedEyeOverlay(
+    stage: Int,
+    now: Long,
+    modifier: Modifier = Modifier,
+) {
+    val pulse = 0.78f + 0.22f * kotlin.math.sin(now / 360.0).toFloat()
+    val intensity = (0.22f + stage * 0.10f).coerceAtMost(0.90f)
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        fun drawEye(cxRatio: Float, cyRatio: Float, rxRatio: Float, ryRatio: Float) {
+            val cx = w * cxRatio
+            val cy = h * cyRatio
+            val rx = w * rxRatio
+            val ry = h * ryRatio
+            drawOval(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0xFFFFE3A5).copy(alpha = 0.10f * pulse * intensity),
+                        Color(0xFFFF3C1F).copy(alpha = 0.40f * intensity),
+                        Color(0xFF8B0000).copy(alpha = 0.14f * intensity),
+                        Color.Transparent,
+                    ),
+                    center = Offset(cx, cy),
+                    radius = rx * 2.8f,
+                ),
+                topLeft = Offset(cx - rx * 2.0f, cy - ry * 2.0f),
+                size = Size(rx * 4.0f, ry * 4.0f),
+            )
+
+            val horizontal = rx * (2.5f + stage * 0.10f)
+            val vertical = ry * (2.6f + stage * 0.10f)
+            val innerX = rx * 0.42f
+            val innerY = ry * 0.42f
+            val star = Path().apply {
+                moveTo(cx, cy - vertical)
+                lineTo(cx + innerX, cy - innerY)
+                lineTo(cx + horizontal, cy)
+                lineTo(cx + innerX, cy + innerY)
+                lineTo(cx, cy + vertical)
+                lineTo(cx - innerX, cy + innerY)
+                lineTo(cx - horizontal, cy)
+                lineTo(cx - innerX, cy - innerY)
+                close()
+            }
+            drawPath(
+                path = star,
+                color = Color(0xFFFF2B18).copy(alpha = (0.64f * intensity * pulse).coerceAtMost(0.92f)),
+            )
+            drawOval(
+                color = Color(0xFFFFF3D0).copy(alpha = (0.52f * intensity * pulse).coerceAtMost(0.82f)),
+                topLeft = Offset(cx - rx * 0.34f, cy - ry * 0.34f),
+                size = Size(rx * 0.68f, ry * 0.68f),
+            )
+        }
+        drawEye(0.405f, 0.385f, 0.023f + stage * 0.0010f, 0.015f + stage * 0.0008f)
+        drawEye(0.595f, 0.385f, 0.023f + stage * 0.0010f, 0.015f + stage * 0.0008f)
+    }
+}
+
+private fun activeSkullEffectStage(active: ActiveTimer?, now: Long): Int {
+    val timer = active ?: return 0
+    val minutes = (timer.elapsedAt(now).coerceAtLeast(0L) / 60_000L).toInt()
+    return (minutes / 10).coerceIn(0, 6)
+}
+
 private fun activeTodayContribution(active: ActiveTimer?, now: Long): Long {
     if (active == null) return 0L
     val startOfDay = java.time.LocalDate.now()
@@ -382,12 +472,6 @@ private fun activeTodayContribution(active: ActiveTimer?, now: Long): Long {
     }
 }
 
-private fun statusLine(active: ActiveTimer?): String = when {
-    active == null -> "还没开始。至少现在没有。"
-    active.status == TimerStatus.PAUSED -> "摆烂暂停中"
-    active.mode == TimerMode.COUNT_DOWN -> "倒计时摆烂中"
-    else -> "摆烂计时中"
-}
 
 private fun formatClock(ms: Long): String {
     val total = ms.coerceAtLeast(0L) / 1000L
@@ -398,8 +482,13 @@ private fun formatClock(ms: Long): String {
 }
 
 private fun formatShort(ms: Long): String {
-    val minutes = ms / 60_000L
-    val h = minutes / 60L
-    val m = minutes % 60L
-    return if (h > 0L) "${h}h ${m}m" else "${m}m"
+    val totalSeconds = (ms.coerceAtLeast(0L) / 1000L)
+    val hours = totalSeconds / 3600L
+    val minutes = (totalSeconds % 3600L) / 60L
+    val seconds = totalSeconds % 60L
+    return if (hours > 0L) {
+        "${hours}h ${minutes}m ${seconds}s"
+    } else {
+        "${minutes}m ${seconds}s"
+    }
 }

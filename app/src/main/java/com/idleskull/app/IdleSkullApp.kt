@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -65,9 +66,9 @@ fun IdleSkullApp(viewModel: TimerViewModel = viewModel()) {
                         .background(MaterialTheme.colorScheme.background)
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                 ) {
-                    PixelButton("计时", { tab = MainTab.TIMER }, Modifier.weight(1f), inverted = tab != MainTab.TIMER)
-                    PixelButton("日志", { tab = MainTab.STATS }, Modifier.weight(1f), inverted = tab != MainTab.STATS)
-                    PixelButton("设置", { tab = MainTab.SETTINGS }, Modifier.weight(1f), inverted = tab != MainTab.SETTINGS)
+                    PixelButton(stringResource(R.string.copy_nav_timer), { tab = MainTab.TIMER }, Modifier.weight(1f), inverted = tab != MainTab.TIMER)
+                    PixelButton(stringResource(R.string.copy_nav_log), { tab = MainTab.STATS }, Modifier.weight(1f), inverted = tab != MainTab.STATS)
+                    PixelButton(stringResource(R.string.copy_nav_settings), { tab = MainTab.SETTINGS }, Modifier.weight(1f), inverted = tab != MainTab.SETTINGS)
                 }
             }
         }
