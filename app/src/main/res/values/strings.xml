@@ -48,5 +48,5 @@
     <string name="copy_update_downloading">正在下载 %1$d%%</string>
     <string name="copy_update_launching_installer">正在打开安装程序…</string>
     <string name="copy_update_download_failed_retry">下载失败 · 重试</string>
-    <string name="copy_update_open_release">打开 GitHub/string>
+    <string name="copy_update_open_release">打开 GitHub</string>
 </resources>
