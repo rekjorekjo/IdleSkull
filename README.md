@@ -13,8 +13,8 @@
 [![Gradle](https://img.shields.io/badge/Gradle-9.1.0-02303A?style=for-the-badge&logo=gradle&logoColor=white)](#开发与构建)
 [![GitHub](https://img.shields.io/badge/GitHub-Releases-181717?style=for-the-badge&logo=github&logoColor=white)](#更新机制)
 
-![Version](https://img.shields.io/badge/version-0.2.18--beta-F2B134?style=flat-square)
-![versionCode](https://img.shields.io/badge/versionCode-21-555555?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.2.19--beta-F2B134?style=flat-square)
+![versionCode](https://img.shields.io/badge/versionCode-22-555555?style=flat-square)
 ![Status](https://img.shields.io/badge/status-Beta-E67E22?style=flat-square)
 ![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?style=flat-square)
 ![targetSdk](https://img.shields.io/badge/targetSdk-36-3DDC84?style=flat-square)
@@ -33,7 +33,7 @@
 | 🧾 摆烂记录 | 日 / 周 / 月 / 年统计、独立日期游标、长按重命名、PNG 数据图分享 |
 | 🖥️ 桌面小组件 | 在桌面直接开始、暂停、继续、结束 |
 | 🌓 外观 | 深色 / 浅色两套主题与独立骷髅视觉素材 |
-| 🔔 更新提醒 | 启动时静默检查；发现新版本仅发送系统通知 |
+| 🔔 应用更新 | 启动时静默检查；发现新版后可直接下载 APK 并交给系统安装程序 |
 | 💾 本地数据 | 不需要账号；Release 不内置测试数据，核心记录保存在设备本地 |
 
 ## 产品交互
@@ -184,14 +184,14 @@ GitHub Releases API
         ↓
 比较 versionCode
         ↓
-有新版本 → 系统通知 / 手动检查结果
+有新版本 → 系统通知 / 手动检查结果 → 用户点击后下载 APK
 ```
 
 这里刻意不使用 GitHub 的 `/releases/latest` 接口，因为该接口只返回最新的非 prerelease 正式版本；IdleSkull 的 beta 版本会作为 prerelease 发布。程序会从公开 Releases 列表中选取 `published_at` 最新的 Release，因此 beta 也能正常检测。
 
 `latest.json` 是发布资产中的唯一更新清单。最新 Release 如果缺少该文件，更新检查会直接失败，而不会偷偷退回旧 Release 或仓库主分支中的旧清单，避免再次出现“明明发了新版但客户端读到旧版本”的情况。
 
-更新比较始终只使用递增的整数 **`versionCode`**；`versionName` 仅用于展示。启动自动检查只在发现新版本时通知，手动“检查更新”每次都会重新请求，不复用启动检查状态。请求禁用本地缓存并带 cache-busting 参数。
+更新比较始终只使用递增的整数 **`versionCode`**；`versionName` 仅用于展示。启动自动检查只在发现新版本时通知，不会后台偷跑下载；手动“检查更新”每次都会重新请求，不复用启动检查状态。发现新版后，“下载并安装”会直接读取 `latest.json` 中的 `apk.url` 下载 APK，并使用清单中的 `size` / `sha256` 校验文件，校验通过后交给 Android 系统安装程序。请求禁用本地缓存并带 cache-busting 参数。
 
 发布时执行 `scripts/release.py`，生成：
 
@@ -214,8 +214,8 @@ X.Y.Z
 当前版本：
 
 ```properties
-versionCode=21
-versionName=0.2.18-beta
+versionCode=22
+versionName=0.2.19-beta
 ```
 
 更新判断只比较递增的 **`versionCode`**；`versionName` 负责用户可读的版本展示。
@@ -297,7 +297,7 @@ IdleSkull/
 ## 暂不计划
 
 - 小米 / vivo / OPPO / 荣耀等厂商岛能力
-- 自动下载或自动安装 APK
+- 后台静默下载或静默安装 APK（下载必须由用户主动点击，安装继续由 Android 系统确认）
 - 账号系统
 - 云同步
 

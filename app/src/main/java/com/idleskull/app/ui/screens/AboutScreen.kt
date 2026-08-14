@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,7 +37,9 @@ import com.idleskull.app.ui.components.PixelParagraph
 import com.idleskull.app.ui.components.PixelText
 import com.idleskull.app.ui.components.SkullBackdrop
 import com.idleskull.app.update.AppUpdateChecker
+import com.idleskull.app.update.AppUpdateDownloader
 import com.idleskull.app.update.UpdateCheckResult
+import com.idleskull.app.update.UpdateDownloadState
 import com.idleskull.app.update.UpdateConfig
 
 private enum class AboutDocument(val title: String) {
@@ -58,6 +61,7 @@ fun AboutScreen(
     var updateStatus by remember { mutableStateOf("手动检查") }
     var checking by remember { mutableStateOf(false) }
     var availableUpdate by remember { mutableStateOf<UpdateCheckResult.Available?>(null) }
+    var updateDownloadState by remember { mutableStateOf<UpdateDownloadState?>(null) }
 
     document?.let { selected ->
         BackHandler { document = null }
@@ -76,10 +80,24 @@ fun AboutScreen(
     }
 
     availableUpdate?.let { update ->
-        BackHandler { availableUpdate = null }
+        BackHandler {
+            availableUpdate = null
+            updateDownloadState = null
+        }
         UpdateDetailsScreen(
             update = update,
-            onBack = { availableUpdate = null },
+            downloadState = updateDownloadState,
+            onBack = {
+                availableUpdate = null
+                updateDownloadState = null
+            },
+            onDownload = {
+                if (updateDownloadState !is UpdateDownloadState.Downloading) {
+                    AppUpdateDownloader.downloadAndInstall(context, update) { state ->
+                        updateDownloadState = state
+                    }
+                }
+            },
             onOpenRelease = { uriHandler.openUri(update.releaseUrl) },
         )
         return
@@ -151,6 +169,7 @@ fun AboutScreen(
                                 UpdateCheckResult.UpToDate -> updateStatus = "已是最新版本"
                                 is UpdateCheckResult.Available -> {
                                     updateStatus = "发现 ${result.versionName}"
+                                    updateDownloadState = null
                                     availableUpdate = result
                                 }
                                 is UpdateCheckResult.Failed -> updateStatus = "检查失败"
@@ -248,7 +267,9 @@ private fun AboutDocumentScreen(
 @Composable
 private fun UpdateDetailsScreen(
     update: UpdateCheckResult.Available,
+    downloadState: UpdateDownloadState?,
     onBack: () -> Unit,
+    onDownload: () -> Unit,
     onOpenRelease: () -> Unit,
 ) {
     Column(
@@ -264,7 +285,7 @@ private fun UpdateDetailsScreen(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             PixelButton("返回", onBack, Modifier.width(86.dp), inverted = true)
-            PixelText("发现新版本", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            PixelText(stringResource(R.string.copy_update_found), fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
 
         PixelPanel {
@@ -289,7 +310,27 @@ private fun UpdateDetailsScreen(
                 }
             }
         }
-        PixelButton("打开 GitHub Release", onOpenRelease, Modifier.fillMaxWidth())
+        val downloadLabel = when (val state = downloadState) {
+            null -> stringResource(R.string.copy_update_download_install)
+            is UpdateDownloadState.Downloading -> stringResource(R.string.copy_update_downloading, state.percent)
+            UpdateDownloadState.LaunchingInstaller -> stringResource(R.string.copy_update_launching_installer)
+            is UpdateDownloadState.Failed -> stringResource(R.string.copy_update_download_failed_retry)
+        }
+        PixelButton(
+            text = downloadLabel,
+            onClick = onDownload,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = downloadState !is UpdateDownloadState.Downloading &&
+                downloadState !is UpdateDownloadState.LaunchingInstaller,
+        )
+        if (downloadState is UpdateDownloadState.Failed) {
+            PixelParagraph(
+                text = downloadState.message,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 11.sp,
+            )
+        }
+        PixelButton(stringResource(R.string.copy_update_open_release), onOpenRelease, Modifier.fillMaxWidth(), inverted = true)
         Spacer(Modifier.height(16.dp))
     }
 }
@@ -315,7 +356,7 @@ private fun readGeneratedRaw(context: android.content.Context, resourceName: Str
 private val PRIVACY_TEXT = """
 • IdleSkull 不要求注册账号，不包含广告，也不接入行为统计或云同步。
 • 计时状态、历史记录、记录名称和主题设置保存在设备本地。
-• 应用启动时会访问项目的 GitHub 更新清单以检查新版本；发现新版本后仅发送系统通知，不会自动下载安装包。
+• 应用启动时会访问 GitHub Release 中的更新清单检查新版本；发现新版本后仅发送系统通知，不会后台自动下载。只有用户主动点击“下载并安装”时才会下载 APK，并交由 Android 系统安装程序确认安装。
 • Android 13 及以上系统可能在首次使用时请求通知权限，用于新版本提醒。
 • 卸载应用或清除应用数据会删除本机保存的历史记录。
 """.trimIndent()

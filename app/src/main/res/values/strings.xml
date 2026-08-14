@@ -42,4 +42,11 @@
     <string name="copy_export_mono">黑白</string>
     <string name="copy_export_color">彩色</string>
     <string name="copy_empty_day">这一天还没有历史记录。</string>
+
+    <string name="copy_update_found">发现新版本</string>
+    <string name="copy_update_download_install">下载并安装</string>
+    <string name="copy_update_downloading">正在下载 %1$d%%</string>
+    <string name="copy_update_launching_installer">正在打开安装程序…</string>
+    <string name="copy_update_download_failed_retry">下载失败 · 重试</string>
+    <string name="copy_update_open_release">打开 GitHub Release</string>
 </resources>

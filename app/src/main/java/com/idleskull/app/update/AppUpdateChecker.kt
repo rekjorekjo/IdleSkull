@@ -15,6 +15,10 @@ internal data class AvailableUpdate(
     val versionName: String,
     val tagName: String,
     val releaseNotes: String,
+    val apkName: String,
+    val apkUrl: String,
+    val apkSize: Long,
+    val apkSha256: String,
 ) {
     val releaseUrl: String
         get() = UpdateConfig.RELEASE_BASE_URL + tagName
@@ -26,6 +30,10 @@ internal sealed interface UpdateCheckResult {
         val versionName: String,
         val releaseUrl: String,
         val releaseNotes: String,
+        val apkName: String,
+        val apkUrl: String,
+        val apkSize: Long,
+        val apkSha256: String,
     ) : UpdateCheckResult
     data class Failed(val message: String) : UpdateCheckResult
 }
@@ -70,6 +78,10 @@ object AppUpdateChecker {
                                 versionName = latest.versionName,
                                 releaseUrl = latest.releaseUrl,
                                 releaseNotes = latest.releaseNotes,
+                                apkName = latest.apkName,
+                                apkUrl = latest.apkUrl,
+                                apkSize = latest.apkSize,
+                                apkSha256 = latest.apkSha256,
                             )
                         } else {
                             UpdateCheckResult.UpToDate
@@ -156,11 +168,20 @@ object AppUpdateChecker {
         val json = JSONObject(body)
         val versionCode = json.getInt("versionCode")
         require(versionCode > 0) { "versionCode 无效" }
+        val apk = json.getJSONObject("apk")
+        val apkName = apk.getString("name")
+        val apkUrl = apk.getString("url")
+        require(apkName.endsWith(".apk", ignoreCase = true)) { "APK 文件名无效" }
+        require(apkUrl.startsWith("https://")) { "APK 下载地址无效" }
         return AvailableUpdate(
             versionCode = versionCode,
             versionName = json.getString("versionName"),
             tagName = json.getString("tagName"),
             releaseNotes = json.optString("releaseNotes"),
+            apkName = apkName,
+            apkUrl = apkUrl,
+            apkSize = apk.optLong("size", 0L),
+            apkSha256 = apk.optString("sha256"),
         )
     }
 

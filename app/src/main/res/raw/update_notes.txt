@@ -1,8 +1,7 @@
-IdleSkull 0.2.18-beta
+IdleSkull 0.2.19-beta
 
-• 更新检查改为单一来源：只读取最新已发布 GitHub Release 中的 `latest.json` 资产。
-• 不再读取或依赖 `main/latest.json`，也移除 Release 后自动同步清单的 GitHub Actions 工作流。
-• 为兼容 beta prerelease，不使用 GitHub `/releases/latest`；改为从公开 Releases 列表按 `published_at` 选取最新发布版本，再读取其 `latest.json`。
-• 最新 Release 若缺少或携带错误的 `latest.json`，检查会直接失败，避免误回退到旧版本清单。
-• 发布脚本只生成 `dist/latest.json`，与 APK 一起作为 Release 资产上传即可。
-• 版本更新为 0.2.18-beta（versionCode 21）。
+• 修复更新交互：发现新版本后不再只提供“打开 GitHub Release”，主按钮改为“下载并安装”。
+• APK 直接使用最新 Release 的 `latest.json` 中 `apk.url` 下载，并校验文件大小和 SHA-256。
+• 下载完成后直接唤起 Android 系统安装程序；不会后台自动下载或静默安装。
+• 新版本系统通知点击后也直接指向 Release 中的 APK 下载地址。
+• 版本更新为 0.2.19-beta（versionCode 22）。

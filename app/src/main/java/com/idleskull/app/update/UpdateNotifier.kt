@@ -36,7 +36,7 @@ object UpdateNotifier {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getInt(KEY_LAST_NOTIFIED_VERSION, 0) >= update.versionCode) return
 
-        val openRelease = Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl)).apply {
+        val openRelease = Intent(Intent.ACTION_VIEW, Uri.parse(update.apkUrl)).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         val pendingIntent = PendingIntent.getActivity(
