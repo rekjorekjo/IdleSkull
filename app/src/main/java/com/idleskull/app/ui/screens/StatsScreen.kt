@@ -479,10 +479,22 @@ private fun PixelMonthInputDialog(
             modifier = Modifier.fillMaxWidth().border(2.dp, MaterialTheme.colorScheme.outline, PixelCutShape),
         ) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                PixelText("跳转到月份", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                PixelText(
+                    "跳转到月份",
+                    modifier = Modifier.fillMaxWidth(),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(Modifier.weight(1.5f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        PixelText("年", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        PixelText(
+                            "年",
+                            modifier = Modifier.fillMaxWidth(),
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
                         PixelInputField(
                             value = yearText,
                             onValueChange = { yearText = it.filter { ch -> ch.isDigit() }.take(4) },
@@ -490,7 +502,13 @@ private fun PixelMonthInputDialog(
                         )
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        PixelText("月", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        PixelText(
+                            "月",
+                            modifier = Modifier.fillMaxWidth(),
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
                         PixelInputField(
                             value = monthText,
                             onValueChange = { monthText = it.filter { ch -> ch.isDigit() }.take(2) },
@@ -498,11 +516,6 @@ private fun PixelMonthInputDialog(
                         )
                     }
                 }
-                PixelText(
-                    "例如：2026 年 6 月",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 9.sp,
-                )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     PixelButton("取消", onDismiss, Modifier.weight(1f), inverted = true)
                     PixelButton(

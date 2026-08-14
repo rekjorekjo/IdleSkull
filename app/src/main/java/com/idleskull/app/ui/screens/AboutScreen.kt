@@ -65,7 +65,7 @@ fun AboutScreen(
             title = selected.title,
             text = when (selected) {
                 AboutDocument.UPDATE_NOTES -> readUpdateNotes(context)
-                AboutDocument.USER_GUIDE -> USER_GUIDE
+                AboutDocument.USER_GUIDE -> readRawText(context, R.raw.usage_guide)
                 AboutDocument.PRIVACY -> PRIVACY_TEXT
                 AboutDocument.OPEN_SOURCE -> OPEN_SOURCE_TEXT
                 AboutDocument.FONT_LICENSE -> readGeneratedRaw(context, "fusion_pixel_font_license")
@@ -294,11 +294,14 @@ private fun UpdateDetailsScreen(
     }
 }
 
-private fun readUpdateNotes(context: android.content.Context): String = runCatching {
-    context.resources.openRawResource(R.raw.update_notes)
+private fun readUpdateNotes(context: android.content.Context): String =
+    readRawText(context, R.raw.update_notes).ifBlank { "暂无更新说明。" }
+
+private fun readRawText(context: android.content.Context, resourceId: Int): String = runCatching {
+    context.resources.openRawResource(resourceId)
         .bufferedReader(Charsets.UTF_8)
         .use { it.readText() }
-}.getOrElse { "暂无更新说明。" }
+}.getOrElse { "无法读取文档。" }
 
 private fun readGeneratedRaw(context: android.content.Context, resourceName: String): String = runCatching {
     val id = context.resources.getIdentifier(resourceName, "raw", context.packageName)
@@ -308,26 +311,6 @@ private fun readGeneratedRaw(context: android.content.Context, resourceName: Str
         .use { it.readText() }
 }.getOrElse { "无法读取许可文件。" }
 
-private val USER_GUIDE = """
-计时器
-• 首页默认使用正计时。点击计时模式选择器可以切换正计时或倒计时。
-• 选择倒计时后输入时、分、秒，确认后点击“开始摆烂”。
-• 计时中可以暂停、继续或结束；运行期间不能切换计时模式。
-
-摆烂记录
-• 页面内的日 / 周 / 月 / 年按钮用于查看不同粒度的统计。
-• 日期条左右按钮可以切换相邻日期 / 周 / 月 / 年；点击中间日期可直接选择一个历史日期。
-• 右上角“导出”可以把当前日 / 周 / 月 / 年数据保存为 PNG 数据图。
-• 每次记录默认名为“未命名”。
-• 在“日”视图中长按某条记录，可以给这次摆烂重新命名。
-
-桌面小组件
-• 添加名为“计时器”的 IdleSkull 小组件后，可以直接在桌面开始、暂停、继续和结束计时。
-• 小组件与 App 共用同一份计时状态和历史数据。
-
-主题
-• 设置页支持浅色和深色两种模式，App 与小组件都会跟随该选择。
-""".trimIndent()
 
 private val PRIVACY_TEXT = """
 • IdleSkull 不要求注册账号，不包含广告，也不接入行为统计或云同步。

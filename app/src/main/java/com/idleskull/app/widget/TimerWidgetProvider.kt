@@ -114,10 +114,8 @@ class TimerWidgetProvider : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_stop, View.GONE)
             views.setViewVisibility(R.id.widget_chronometer, View.GONE)
             views.setViewVisibility(R.id.widget_static_time, View.VISIBLE)
-            views.setImageViewBitmap(
-                R.id.widget_static_time,
-                renderTimerDigits(context, "00:00:00", colors.main),
-            )
+            views.setTextViewText(R.id.widget_static_time, "00:00:00")
+            views.setTextColor(R.id.widget_static_time, colors.main)
         } else {
             val display = active.displayMsAt(nowWall)
             val status = when {
@@ -152,10 +150,8 @@ class TimerWidgetProvider : AppWidgetProvider() {
             } else {
                 views.setViewVisibility(R.id.widget_chronometer, View.GONE)
                 views.setViewVisibility(R.id.widget_static_time, View.VISIBLE)
-                views.setImageViewBitmap(
-                    R.id.widget_static_time,
-                    renderTimerDigits(context, formatWidgetTime(display), colors.main),
-                )
+                views.setTextViewText(R.id.widget_static_time, formatWidgetTime(display))
+                views.setTextColor(R.id.widget_static_time, colors.main)
             }
         }
         updateCountdownCompletionAlarm(context, active, active?.displayMsAt(nowWall) ?: 0L)
@@ -216,31 +212,6 @@ class TimerWidgetProvider : AppWidgetProvider() {
             textSize = textSizeSp * scaledDensity
             this.typeface = typeface
             isFakeBoldText = bold
-        }
-        val fm = paint.fontMetrics
-        val padding = (2f * density).coerceAtLeast(2f)
-        val width = ceil(paint.measureText(text) + padding * 2f).toInt().coerceAtLeast(1)
-        val height = ceil((fm.descent - fm.ascent) + padding * 2f).toInt().coerceAtLeast(1)
-        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
-            Canvas(bitmap).drawText(text, padding, padding - fm.ascent, paint)
-        }
-    }
-
-    private fun renderTimerDigits(
-        context: Context,
-        text: String,
-        color: Int,
-    ): Bitmap {
-        val scaledDensity = context.resources.displayMetrics.scaledDensity
-        val density = context.resources.displayMetrics.density
-        val paint = Paint().apply {
-            isAntiAlias = false
-            isDither = false
-            isSubpixelText = false
-            isLinearText = false
-            this.color = color
-            textSize = 25f * scaledDensity
-            typeface = loadPixelTypeface(context)
         }
         val fm = paint.fontMetrics
         val padding = (2f * density).coerceAtLeast(2f)

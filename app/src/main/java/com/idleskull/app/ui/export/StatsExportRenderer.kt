@@ -65,11 +65,10 @@ object StatsExportRenderer {
         }
 
         drawText(canvas, paint, context.getString(R.string.copy_stats_title), MARGIN, 122f, 52f, palette.ink)
-        drawText(canvas, paint, "IdleSkull", MARGIN, 166f, 22f, palette.secondary)
-        drawRule(canvas, paint, 198f, palette.outline)
+        drawRule(canvas, paint, 182f, palette.outline)
 
         val period = periodText(spec.range, spec.anchorDate)
-        drawText(canvas, paint, period, MARGIN, 258f, 34f, palette.ink)
+        drawText(canvas, paint, period, MARGIN, 242f, 34f, palette.ink)
 
         val total = totalFor(spec.range, spec.anchorDate, totals)
         drawText(
@@ -77,16 +76,16 @@ object StatsExportRenderer {
             paint,
             "总摆烂  ${formatDuration(total)}",
             MARGIN,
-            334f,
+            318f,
             58f,
             palette.totalSeverity(spec.range, total),
         )
 
         when (spec.range) {
-            StatsRange.DAY -> drawDay(canvas, paint, palette, spec.sessions, spec.anchorDate, 420f)
-            StatsRange.WEEK -> drawWeek(canvas, paint, palette, totals, spec.anchorDate, 430f)
-            StatsRange.MONTH -> drawMonth(canvas, paint, palette, totals, YearMonth.from(spec.anchorDate), 418f)
-            StatsRange.YEAR -> drawYear(canvas, paint, palette, totals, spec.anchorDate.year, 416f)
+            StatsRange.DAY -> drawDay(canvas, paint, palette, spec.sessions, spec.anchorDate, 404f)
+            StatsRange.WEEK -> drawWeek(canvas, paint, palette, totals, spec.anchorDate, 414f)
+            StatsRange.MONTH -> drawMonth(canvas, paint, palette, totals, YearMonth.from(spec.anchorDate), 402f)
+            StatsRange.YEAR -> drawYear(canvas, paint, palette, totals, spec.anchorDate.year, 400f)
         }
 
         drawSkullSeal(context, canvas, spec.darkMode)
@@ -137,7 +136,17 @@ object StatsExportRenderer {
                 canvas.drawRect(MARGIN, y, MARGIN + 8f, y + 92f, paint)
             }
             drawText(canvas, paint, session.name.ifBlank { "未命名" }, MARGIN + 26f, y + 38f, 26f, palette.ink)
-            val detail = "${start.format(DateTimeFormatter.ofPattern("HH:mm"))}-${end.format(DateTimeFormatter.ofPattern("HH:mm"))}  ${formatDuration(session.durationMs)}"
+            drawText(
+                canvas,
+                paint,
+                formatDuration(session.durationMs),
+                WIDTH - MARGIN - 26f,
+                y + 38f,
+                22f,
+                palette.ink,
+                Paint.Align.RIGHT,
+            )
+            val detail = "${start.format(DateTimeFormatter.ofPattern("HH:mm"))}-${end.format(DateTimeFormatter.ofPattern("HH:mm"))}"
             drawText(canvas, paint, detail, MARGIN + 26f, y + 70f, 21f, palette.secondary)
             y += 106f
         }
@@ -155,27 +164,42 @@ object StatsExportRenderer {
         val values = days.map { totals[it] ?: 0L }
         val maxValue = max(values.maxOrNull() ?: 0L, 1L)
         drawText(canvas, paint, "7 日分布", MARGIN, top, 28f, palette.ink)
-        val chartTop = top + 58f
-        val chartBottom = 1095f
+        val chartTop = top + 74f
+        val chartBottom = 1060f
         val width = WIDTH - MARGIN * 2
         val gap = 18f
-        val barWidth = (width - gap * 6) / 7f
+        val slotWidth = (width - gap * 6) / 7f
+        val barWidth = slotWidth * 0.68f
+
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2f
+        paint.color = palette.outline
+        canvas.drawLine(MARGIN, chartBottom, WIDTH - MARGIN, chartBottom, paint)
+        listOf(0.25f, 0.5f, 0.75f).forEach { marker ->
+            val y = chartBottom - 320f * marker
+            paint.color = Color.argb(if (palette.colourful) 54 else 42, Color.red(palette.outline), Color.green(palette.outline), Color.blue(palette.outline))
+            canvas.drawLine(MARGIN, y, WIDTH - MARGIN, y, paint)
+        }
 
         days.forEachIndexed { index, day ->
             val value = values[index]
             val ratio = value.toFloat() / maxValue.toFloat()
-            val left = MARGIN + index * (barWidth + gap)
-            val height = if (value == 0L) 4f else 440f * ratio.coerceAtLeast(0.03f)
-            val bottom = chartBottom
-            paint.color = palette.outline
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 3f
-            canvas.drawRect(left, chartTop, left + barWidth, bottom, paint)
+            val slotLeft = MARGIN + index * (slotWidth + gap)
+            val left = slotLeft + (slotWidth - barWidth) / 2f
+            val bottom = chartBottom - 4f
+            val height = if (value == 0L) 8f else 56f + 264f * ratio.coerceIn(0f, 1f)
+            val topY = bottom - height
             paint.style = Paint.Style.FILL
-            paint.color = palette.severityDaily(value)
-            canvas.drawRect(left + 4f, bottom - height, left + barWidth - 4f, bottom - 4f, paint)
-            drawText(canvas, paint, weekday(day), left + barWidth / 2f, bottom + 42f, 22f, palette.secondary, Paint.Align.CENTER)
-            drawText(canvas, paint, formatDuration(value), left + barWidth / 2f, bottom + 76f, 18f, palette.secondary, Paint.Align.CENTER)
+            paint.color = if (value == 0L) palette.surface else palette.severityDaily(value)
+            canvas.drawRect(left, topY, left + barWidth, bottom, paint)
+            paint.color = if (value == 0L) palette.outline else lerpColor(palette.severityDaily(value), Color.WHITE, 0.18f)
+            canvas.drawRect(left, topY, left + barWidth, topY + 6f, paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2f
+            paint.color = palette.outline
+            canvas.drawRect(left, topY, left + barWidth, bottom, paint)
+            drawText(canvas, paint, weekday(day), slotLeft + slotWidth / 2f, chartBottom + 40f, 22f, palette.secondary, Paint.Align.CENTER)
+            drawText(canvas, paint, formatDuration(value), slotLeft + slotWidth / 2f, chartBottom + 74f, 18f, palette.secondary, Paint.Align.CENTER)
         }
     }
 

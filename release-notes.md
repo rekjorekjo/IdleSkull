@@ -1,5 +1,8 @@
-- 彩色导出改用“阴森街机”B 配色，并修复月热力图把严重程度颜色与背景二次混合导致实际颜色偏黄偏棕的问题。
-- 月热力图在彩色模式下现在直接使用严重程度色，预览 HTML 与实际导出颜色保持一致。
-- 红眼水平位置向内微调，并改为小核心加四角星光芒的形状，竖直位置保持已确认正确的高度。
-- 新增并扩充 app/src/main/res/values/strings.xml 作为常用文案集中编辑入口，主页、Widget、导出图的主要文案已接入资源。
-- 版本更新为 0.2.11-beta（versionCode 14）。
+# IdleSkull 0.2.18-beta
+
+- 更新检查改为单一来源：只读取最新已发布 GitHub Release 中的 `latest.json` 资产。
+- 不再读取或依赖 `main/latest.json`，也移除 Release 后自动同步清单的 GitHub Actions 工作流。
+- 为兼容 beta prerelease，不使用 GitHub `/releases/latest`；改为从公开 Releases 列表按 `published_at` 选取最新发布版本，再读取其 `latest.json`。
+- 最新 Release 若缺少或携带错误的 `latest.json`，检查会直接失败，避免误回退到旧版本清单。
+- 发布脚本只生成 `dist/latest.json`，与 APK 一起作为 Release 资产上传即可。
+- 版本更新为 0.2.18-beta（versionCode 21）。

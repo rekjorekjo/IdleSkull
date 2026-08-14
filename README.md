@@ -13,8 +13,8 @@
 [![Gradle](https://img.shields.io/badge/Gradle-9.1.0-02303A?style=for-the-badge&logo=gradle&logoColor=white)](#开发与构建)
 [![GitHub](https://img.shields.io/badge/GitHub-Releases-181717?style=for-the-badge&logo=github&logoColor=white)](#更新机制)
 
-![Version](https://img.shields.io/badge/version-0.2.11--beta-F2B134?style=flat-square)
-![versionCode](https://img.shields.io/badge/versionCode-14-555555?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.2.18--beta-F2B134?style=flat-square)
+![versionCode](https://img.shields.io/badge/versionCode-21-555555?style=flat-square)
 ![Status](https://img.shields.io/badge/status-Beta-E67E22?style=flat-square)
 ![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?style=flat-square)
 ![targetSdk](https://img.shields.io/badge/targetSdk-36-3DDC84?style=flat-square)
@@ -67,7 +67,7 @@ __ 时  __ 分  __ 秒
 日期导航的左右按钮仍用于逐日 / 周 / 月 / 年浏览；四个范围的快速跳转方式按粒度分别设计：
 
 - **日 / 周**：点击中间日期打开 IdleSkull 自己的像素风日历面板，面板跟随当前深浅主题并使用 Fusion Pixel 字体。
-- **月**：点击中间月份直接输入“年 + 月”，不必在完整日历中翻页。
+- **月**：点击中间月份直接输入“年 + 月”，年份与月份采用等宽输入框，不必在完整日历中翻页。
 - **年**：点击中间年份直接输入年份。
 
 因此从 `8.15` 查看 `6.15` 不需要连续点击几十次，同时日 / 周 / 月 / 年仍各自保存独立游标。当前日期显示为 `今天 · M.D`，周视图显示完整起止日期。
@@ -127,9 +127,13 @@ IdleSkull 采用黑白骷髅 + 像素 UI 的视觉语言：
 
 小组件只是计时状态的操作入口，不维护第二套独立计时数据，避免 App 与桌面状态不同步。
 
-`0.2.6-beta` 起，小组件标题、状态和操作按钮不再依赖桌面 Launcher 自己解析自定义字体，而是由 App 使用 Fusion Pixel Font 预渲染成小尺寸位图后交给 RemoteViews，提升小米 / HyperOS 等桌面上的像素字体一致性。运行中的秒级计时仍由系统 `Chronometer` 驱动，以避免 App 每秒唤醒刷新 Widget；暂停和空闲时间则同样使用像素字体位图。
+`0.2.6-beta` 起，小组件标题、状态和操作按钮不再依赖桌面 Launcher 自己解析自定义字体，而是由 App 使用 Fusion Pixel Font 预渲染成小尺寸位图后交给 RemoteViews，提升小米 / HyperOS 等桌面上的像素字体一致性。运行中的秒级计时继续由系统 `Chronometer` 驱动，以避免 App 每秒唤醒刷新 Widget；从 `0.2.12-beta` 起，空闲和暂停时间也改为与 Chronometer 更接近的普通数字字体，减少开始计时前后的字形突变。
 
 `0.2.4-beta` 额外做了一轮 OEM 兼容修正：RemoteViews 只使用 Android 官方允许的布局 / View 类型，并移除了此前 XML 中的 `Space`。官方 RemoteViews 支持列表并不包含 `Space`，某些桌面宿主会因此直接显示“载入小组件失败”。小组件默认目标尺寸为 2×2，并在尺寸变化时主动重建 RemoteViews。
+
+## 仓库忽略规则
+
+根目录 `.gitignore` 会忽略 Android Studio / Gradle 缓存、构建产物、APK/AAB、签名文件、Python 缓存和常见系统临时文件。Fusion Pixel 字体下载缓存位于 `.gradle/idleskull-fonts/`，因此也不会被提交到仓库。
 
 ## Debug 测试数据
 
@@ -146,9 +150,9 @@ Debug 统计页会把确定性的半年样本与设备真实记录在内存中�
 
 主页深浅色骷髅现在都经过透明像素包围盒校准：可见主体在 1024×1024 素材画布中严格水平居中，Compose 继续按 `BottomCenter` 放置。这样后续给眼窝叠加红眼、闪烁或裂纹时，不需要再为左右偏移做补偿。
 
-后续考虑让骷髅随单次摆烂时长逐步发生变化。现阶段优先考虑**红眼 / 眼窝呼吸光**：因为主页骷髅素材已经严格居中，可以在固定眼窝锚点上叠加独立透明效果层，不需要破坏原图。
+主页已经启用按单次有效摆烂时长递进的**眼窝呼吸光**：满 10 分钟后出现，此后每 10 分钟增强一档。 也就是说 10 / 20 / 30 / 40 / 50 / 60 分钟会分别进入下一档，30 分钟处会从第 2 档直接切到第 3 档。深色模式使用红色眼光，浅色模式使用更高亮、更阴森的荧光绿眼；光效始终叠在固定眼窝锚点上，不修改骷髅底图。
 
-“开裂”不会采用实时把整张 PNG 算法性撕裂的方案；如果后续确实要做，会准备数张透明裂纹 Overlay，按时间阶段叠加到同一套骷髅上。这样实现成本和性能都可控，也不会因为底图是一体图片就失去定位。当前 Beta 暂不启用任何异化特效。
+“开裂”不会采用实时把整张 PNG 算法性撕裂的方案；如果后续确实要做，会准备数张透明裂纹 Overlay，按时间阶段叠加到同一套骷髅上。这样实现成本和性能都可控，也不会因为底图是一体图片就失去定位。
 
 ## 关于页面
 
@@ -157,7 +161,7 @@ Debug 统计页会把确定性的半年样本与设备真实记录在内存中�
 - 当前版本
 - 手动检查更新
 - 更新说明
-- 使用说明
+- 使用说明（`app/src/main/res/raw/usage_guide.txt`，可直接维护）
 - 隐私说明
 - 开源组件
 - Fusion Pixel Font 字体许可
@@ -167,68 +171,36 @@ Debug 统计页会把确定性的半年样本与设备真实记录在内存中�
 
 ## 更新机制
 
-IdleSkull 采用轻量的 GitHub Release 更新机制，原则是 **只提醒，不自动下载**。
+IdleSkull 的在线更新只认 **GitHub Release 里的 `latest.json` 资产**，不再读取 `main/latest.json`，也不再做双源兜底。
+
+检查流程：
 
 ```text
-App 启动
-   ↓
-后台静默读取 main/latest.json
-   ↓
+GitHub Releases API
+        ↓
+选取 published_at 最新的已发布 Release（包含 prerelease）
+        ↓
+读取该 Release 资产中的 latest.json
+        ↓
 比较 versionCode
-   ↓
-发现更高版本
-   ↓
-发送系统通知
-   ↓
-用户主动打开对应 GitHub Release
+        ↓
+有新版本 → 系统通知 / 手动检查结果
 ```
 
-自动检查不会修改关于页的手动检查状态。用户点击「检查更新」时，会发起一次新的请求并显示：
+这里刻意不使用 GitHub 的 `/releases/latest` 接口，因为该接口只返回最新的非 prerelease 正式版本；IdleSkull 的 beta 版本会作为 prerelease 发布。程序会从公开 Releases 列表中选取 `published_at` 最新的 Release，因此 beta 也能正常检测。
 
-- 正在检查
-- 已是最新版本
-- 发现新版本
-- 检查失败
+`latest.json` 是发布资产中的唯一更新清单。最新 Release 如果缺少该文件，更新检查会直接失败，而不会偷偷退回旧 Release 或仓库主分支中的旧清单，避免再次出现“明明发了新版但客户端读到旧版本”的情况。
 
-默认更新清单：
+更新比较始终只使用递增的整数 **`versionCode`**；`versionName` 仅用于展示。启动自动检查只在发现新版本时通知，手动“检查更新”每次都会重新请求，不复用启动检查状态。请求禁用本地缓存并带 cache-busting 参数。
+
+发布时执行 `scripts/release.py`，生成：
 
 ```text
-https://raw.githubusercontent.com/rekjorekjo/IdleSkull/main/latest.json
-```
-
-请求使用 cache-busting 参数以及 `no-cache / no-store`，降低 GitHub Raw / CDN 返回旧清单的风险。
-
-### 发布说明
-
-根目录：
-
-```text
-release-notes.md
-```
-
-是发布说明的唯一人工维护来源。每次 Android 构建前会自动转换为：
-
-```text
-app/src/main/res/raw/update_notes.txt
-```
-
-### 打包发布
-
-准备好签名 APK 后：
-
-```bash
-python scripts/release.py --apk /path/to/IdleSkull-release.apk
-```
-
-脚本生成：
-
-```text
-dist/IdleSkull-v<version>.apk
+dist/IdleSkull-vX.Y.Z-beta.apk
 dist/latest.json
-latest.json
 ```
 
-APK 发布到对应 GitHub Release 后，再将根目录 `latest.json` 提交到 `main`。这样 Beta Release 即使标记为 **Pre-release**，仍然可以被 App 检查到。
+这两个文件一起上传到同一个 GitHub Release 即可。无需再把 `latest.json` 提交到 `main`，也无需 Release 后同步工作流。
 
 ## 版本规则
 
@@ -242,8 +214,8 @@ X.Y.Z
 当前版本：
 
 ```properties
-versionCode=14
-versionName=0.2.11-beta
+versionCode=21
+versionName=0.2.18-beta
 ```
 
 更新判断只比较递增的 **`versionCode`**；`versionName` 负责用户可读的版本展示。
@@ -289,7 +261,7 @@ IdleSkull/
 │       └── res/               # Android 资源
 ├── app/src/debug/             # Debug 专用测试数据
 ├── app/src/release/           # Release 专用 no-op 调试实现
-├── scripts/release.py         # Release 打包与 latest.json
+├── scripts/release.py         # Release 打包、清单生成与 Git 状态检查
 ├── release-notes.md           # 发布说明唯一人工维护来源
 ├── version.properties         # versionCode / versionName
 └── README.md

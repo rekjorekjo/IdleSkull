@@ -99,6 +99,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
             SkullRedEyeOverlay(
                 stage = effectStage,
                 now = now,
+                darkMode = viewModel.darkMode,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .size(320.dp),
@@ -390,13 +391,33 @@ private fun sanitizeNumber(raw: String, maxDigits: Int): String =
 private fun SkullRedEyeOverlay(
     stage: Int,
     now: Long,
+    darkMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val pulse = 0.78f + 0.22f * kotlin.math.sin(now / 360.0).toFloat()
-    val intensity = (0.22f + stage * 0.10f).coerceAtMost(0.90f)
+    val pulse = 0.80f + 0.20f * kotlin.math.sin(now / 360.0).toFloat()
+    val intensity = if (darkMode) {
+        (0.24f + stage * 0.10f).coerceAtMost(0.92f)
+    } else {
+        (0.40f + stage * 0.10f).coerceAtMost(1.0f)
+    }
+    val glowBoost = if (darkMode) 1.0f else 1.55f
+    val core = if (darkMode) Color(0xFFFFE6B8) else Color(0xFFF0FFE8)
+    val mid = if (darkMode) Color(0xFFFF3925) else Color(0xFF43FF54)
+    val outer = if (darkMode) Color(0xFF7A0000) else Color(0xFF008C32)
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
+        fun starPath(cx: Float, cy: Float, horizontal: Float, vertical: Float, innerX: Float, innerY: Float): Path = Path().apply {
+            moveTo(cx, cy - vertical)
+            lineTo(cx + innerX, cy - innerY)
+            lineTo(cx + horizontal, cy)
+            lineTo(cx + innerX, cy + innerY)
+            lineTo(cx, cy + vertical)
+            lineTo(cx - innerX, cy + innerY)
+            lineTo(cx - horizontal, cy)
+            lineTo(cx - innerX, cy - innerY)
+            close()
+        }
         fun drawEye(cxRatio: Float, cyRatio: Float, rxRatio: Float, ryRatio: Float) {
             val cx = w * cxRatio
             val cy = h * cyRatio
@@ -405,45 +426,47 @@ private fun SkullRedEyeOverlay(
             drawOval(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFFFFE3A5).copy(alpha = 0.10f * pulse * intensity),
-                        Color(0xFFFF3C1F).copy(alpha = 0.40f * intensity),
-                        Color(0xFF8B0000).copy(alpha = 0.14f * intensity),
+                        core.copy(alpha = (0.08f * glowBoost * pulse * intensity).coerceAtMost(0.30f)),
+                        mid.copy(alpha = (0.26f * glowBoost * intensity).coerceAtMost(0.62f)),
+                        outer.copy(alpha = (0.12f * glowBoost * intensity).coerceAtMost(0.34f)),
                         Color.Transparent,
                     ),
                     center = Offset(cx, cy),
-                    radius = rx * 2.8f,
+                    radius = rx * 3.2f,
                 ),
-                topLeft = Offset(cx - rx * 2.0f, cy - ry * 2.0f),
-                size = Size(rx * 4.0f, ry * 4.0f),
+                topLeft = Offset(cx - rx * 2.4f, cy - ry * 2.3f),
+                size = Size(rx * 4.8f, ry * 4.6f),
             )
-
-            val horizontal = rx * (2.5f + stage * 0.10f)
-            val vertical = ry * (2.6f + stage * 0.10f)
-            val innerX = rx * 0.42f
-            val innerY = ry * 0.42f
-            val star = Path().apply {
-                moveTo(cx, cy - vertical)
-                lineTo(cx + innerX, cy - innerY)
-                lineTo(cx + horizontal, cy)
-                lineTo(cx + innerX, cy + innerY)
-                lineTo(cx, cy + vertical)
-                lineTo(cx - innerX, cy + innerY)
-                lineTo(cx - horizontal, cy)
-                lineTo(cx - innerX, cy - innerY)
-                close()
-            }
+            val horizontal = rx * (2.6f + stage * 0.12f)
+            val vertical = ry * (2.8f + stage * 0.12f)
+            val innerX = rx * 0.46f
+            val innerY = ry * 0.46f
+            val diagonalH = horizontal * 0.74f
+            val diagonalV = vertical * 0.74f
             drawPath(
-                path = star,
-                color = Color(0xFFFF2B18).copy(alpha = (0.64f * intensity * pulse).coerceAtMost(0.92f)),
+                path = starPath(cx, cy, horizontal, vertical, innerX, innerY),
+                color = mid.copy(alpha = (0.34f * glowBoost * intensity * pulse).coerceAtMost(0.76f)),
+            )
+            drawPath(
+                path = starPath(cx, cy, diagonalH, diagonalV, innerX * 0.92f, innerY * 0.92f),
+                color = mid.copy(alpha = (0.22f * glowBoost * intensity * pulse).coerceAtMost(0.56f)),
             )
             drawOval(
-                color = Color(0xFFFFF3D0).copy(alpha = (0.52f * intensity * pulse).coerceAtMost(0.82f)),
-                topLeft = Offset(cx - rx * 0.34f, cy - ry * 0.34f),
-                size = Size(rx * 0.68f, ry * 0.68f),
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        core.copy(alpha = (0.72f * glowBoost * intensity * pulse).coerceAtMost(1.0f)),
+                        mid.copy(alpha = (0.62f * glowBoost * intensity * pulse).coerceAtMost(0.96f)),
+                        Color.Transparent,
+                    ),
+                    center = Offset(cx, cy),
+                    radius = maxOf(rx, ry) * 0.95f,
+                ),
+                topLeft = Offset(cx - rx * 0.50f, cy - ry * 0.50f),
+                size = Size(rx * 1.00f, ry * 1.00f),
             )
         }
         drawEye(0.405f, 0.385f, 0.023f + stage * 0.0010f, 0.015f + stage * 0.0008f)
-        drawEye(0.595f, 0.385f, 0.023f + stage * 0.0010f, 0.015f + stage * 0.0008f)
+        drawEye(0.582f, 0.385f, 0.023f + stage * 0.0010f, 0.015f + stage * 0.0008f)
     }
 }
 

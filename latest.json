@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "tagName": "v0.2.3-beta",
-  "versionName": "0.2.3-beta",
-  "versionCode": 6,
-  "releaseNotes": "# IdleSkull 0.2.3-beta\n\n- “日志”页顶部标题调整为“摆烂记录”，底部导航仍保持“日志”。\n- 修正更新检查流程：启动时继续静默检查；关于页只有用户主动点击后才显示检查结果，并对 `latest.json` 使用无缓存请求，降低 GitHub Raw/CDN 缓存导致版本判断滞后的概率。\n- 中文像素字体改用开源 Fusion Pixel Font 12px Proportional 简体中文字形；首页主计时数字保留上一版的数字渲染风格，避免中文与数字一起被强行套用普通等宽字体。\n- 关于页的更新说明、使用说明、隐私说明、开源组件和字体许可改为独立可滚动页面，不再使用长文本弹窗。\n- 主页和 App 图标的骷髅素材去除海盗旗，只保留写实骷髅头与交叉骨；App 图标放大骷髅头并缩小骨头。浅色模式使用独立高对比黑色素材，深色模式使用独立白色素材。\n- 桌面“计时器”小组件重新适配深浅色主题，加入骷髅标识、接入同一套中文像素字体，并继续支持开始、暂停、继续和结束。\n- 保持不内置任何演示/测试数据。\n- 版本更新为 0.2.3-beta（versionCode 6）。\n",
+  "tagName": "v0.2.16-beta",
+  "versionName": "0.2.16-beta",
+  "versionCode": 19,
+  "releaseNotes": "# IdleSkull 0.2.16-beta\n\n- 修正每日导出图的单条记录布局：摆烂时长与记录名称位于同一行右侧，具体起止时间单独放在下一行，与 App 内“摆烂记录”页保持一致。\n- README 与 APK 内更新说明同步本次调整。\n- 版本更新为 0.2.16-beta（versionCode 19）。\n",
   "apk": {
-    "name": "IdleSkull-v0.2.3-beta.apk",
-    "url": "https://github.com/rekjorekjo/IdleSkull/releases/download/v0.2.3-beta/IdleSkull-v0.2.3-beta.apk",
-    "size": 10260001,
-    "sha256": "ab0390875329f69133066a0aa5a8771052693cd7b5d6a65423141d56744de3a1"
+    "name": "IdleSkull-v0.2.16-beta.apk",
+    "url": "https://github.com/rekjorekjo/IdleSkull/releases/download/v0.2.16-beta/IdleSkull-v0.2.16-beta.apk",
+    "size": 10317757,
+    "sha256": "5369966e2f1c21a0bd3c884392af4fc397036516e790ca11b250ca16a0a7af86"
   }
 }

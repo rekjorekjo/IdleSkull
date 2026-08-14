@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.idleskull.app.BuildConfig
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -86,18 +87,101 @@ object AppUpdateChecker {
         }.start()
     }
 
-    private fun fetchLatest(): AvailableUpdate {
-        // raw.githubusercontent.com can be cached by intermediate/CDN layers. The timestamp makes
-        // every check a distinct request, while the headers also ask all caches to revalidate.
-        val separator = if (UpdateConfig.UPDATE_MANIFEST_URL.contains('?')) '&' else '?'
-        val requestUrl = UpdateConfig.UPDATE_MANIFEST_URL + separator + "_=" + System.currentTimeMillis()
+    /**
+     * GitHub Release assets are the single source of truth for update checks.
+     *
+     * We intentionally do NOT use GitHub's `/releases/latest` endpoint because it ignores
+     * prereleases, while IdleSkull beta builds are published as prereleases. Instead we list
+     * published releases, pick the one with the newest published_at timestamp (prereleases
+     * included), and read that release's `latest.json` asset directly.
+     */
+    private fun fetchLatest(): AvailableUpdate = fetchNewestPublishedReleaseManifest()
+
+    private fun fetchNewestPublishedReleaseManifest(): AvailableUpdate {
+        val body = requestText(
+            url = UpdateConfig.RELEASES_API_URL,
+            accept = "application/vnd.github+json",
+            cacheBust = true,
+        )
+        val releases = JSONArray(body)
+        require(releases.length() > 0) { "GitHub 暂无已发布 Release" }
+
+        var newestRelease: JSONObject? = null
+        var newestPublishedAt = Long.MIN_VALUE
+        for (index in 0 until releases.length()) {
+            val release = releases.optJSONObject(index) ?: continue
+            if (release.optBoolean("draft", false)) continue
+            val publishedAt = release.optString("published_at")
+            if (publishedAt.isBlank()) continue
+            val publishedEpoch = runCatching { java.time.Instant.parse(publishedAt).toEpochMilli() }
+                .getOrNull() ?: continue
+            if (publishedEpoch > newestPublishedAt) {
+                newestPublishedAt = publishedEpoch
+                newestRelease = release
+            }
+        }
+
+        val release = newestRelease ?: error("GitHub 暂无可用的已发布 Release")
+        val tagName = release.optString("tag_name")
+        require(tagName.isNotBlank()) { "最新 Release 缺少 tag_name" }
+        val assets = release.optJSONArray("assets")
+            ?: error("最新 Release $tagName 没有 assets")
+
+        var manifestUrl: String? = null
+        for (index in 0 until assets.length()) {
+            val asset = assets.optJSONObject(index) ?: continue
+            if (asset.optString("name") != UpdateConfig.RELEASE_MANIFEST_ASSET_NAME) continue
+            val downloadUrl = asset.optString("browser_download_url")
+            if (downloadUrl.isNotBlank()) {
+                manifestUrl = downloadUrl
+                break
+            }
+        }
+        val url = manifestUrl
+            ?: error("最新 Release $tagName 缺少 ${UpdateConfig.RELEASE_MANIFEST_ASSET_NAME}")
+
+        val manifest = fetchManifest(url, cacheBust = true)
+        require(manifest.tagName == tagName) {
+            "Release $tagName 的 latest.json 指向 ${manifest.tagName}"
+        }
+        return manifest
+    }
+
+    private fun fetchManifest(url: String, cacheBust: Boolean): AvailableUpdate {
+        val body = requestText(
+            url = url,
+            accept = "application/json, application/octet-stream;q=0.9, */*;q=0.8",
+            cacheBust = cacheBust,
+        )
+        val json = JSONObject(body)
+        val versionCode = json.getInt("versionCode")
+        require(versionCode > 0) { "versionCode 无效" }
+        return AvailableUpdate(
+            versionCode = versionCode,
+            versionName = json.getString("versionName"),
+            tagName = json.getString("tagName"),
+            releaseNotes = json.optString("releaseNotes"),
+        )
+    }
+
+    private fun requestText(
+        url: String,
+        accept: String,
+        cacheBust: Boolean,
+    ): String {
+        val requestUrl = if (cacheBust) {
+            val separator = if (url.contains('?')) '&' else '?'
+            url + separator + "_=" + System.currentTimeMillis()
+        } else {
+            url
+        }
         val connection = (URL(requestUrl).openConnection() as HttpURLConnection).apply {
             connectTimeout = 8_000
             readTimeout = 8_000
             requestMethod = "GET"
             useCaches = false
             defaultUseCaches = false
-            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Accept", accept)
             setRequestProperty("Cache-Control", "no-cache, no-store, max-age=0")
             setRequestProperty("Pragma", "no-cache")
             setRequestProperty("User-Agent", "IdleSkull/${BuildConfig.VERSION_NAME}")
@@ -106,14 +190,7 @@ object AppUpdateChecker {
         return try {
             val code = connection.responseCode
             if (code !in 200..299) error("HTTP $code")
-            val body = connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-            val json = JSONObject(body)
-            AvailableUpdate(
-                versionCode = json.getInt("versionCode"),
-                versionName = json.getString("versionName"),
-                tagName = json.getString("tagName"),
-                releaseNotes = json.optString("releaseNotes"),
-            )
+            connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         } finally {
             connection.disconnect()
         }

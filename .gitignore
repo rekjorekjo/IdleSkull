@@ -1,17 +1,36 @@
+# Android Studio / IntelliJ
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-.DS_Store
-/build
-/app/build
-/captures
-.externalNativeBuild
-.cxx
-/dist
+.idea/
+
+# Gradle / Android build output
+.gradle/
+build/
+app/build/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Generated / packaged release files
+/latest.json
+dist/
+*.apk
+*.aab
+*.apks
+
+# Signing secrets
 *.jks
 *.keystore
 keystore.properties
+
+# Python release tooling
+__pycache__/
+*.py[cod]
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~

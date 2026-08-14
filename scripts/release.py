@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -25,6 +26,7 @@ def main() -> None:
     apk = Path(args.apk).resolve()
     notes = (root / args.notes).resolve() if not Path(args.notes).is_absolute() else Path(args.notes)
 
+    validate_git_state(root)
     validate_apk(apk)
     release_notes = read_release_notes(notes)
     dist = root / "dist"
@@ -52,13 +54,11 @@ def main() -> None:
     manifest_text = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
     manifest_path = dist / "latest.json"
     manifest_path.write_text(manifest_text, encoding="utf-8")
-    root_manifest_path = root / "latest.json"
-    root_manifest_path.write_text(manifest_text, encoding="utf-8")
-
     print(f"Generated: {target_apk}")
     print(f"Generated: {manifest_path}")
-    print(f"Generated: {root_manifest_path} (commit this file to the default branch)")
     print(f"Version: {version_name} ({version_code})")
+    print("Release assets: upload both the APK and dist/latest.json")
+    print("The app reads latest.json directly from the newest published GitHub Release.")
 
 
 def read_version(path: Path) -> tuple[int, str]:
@@ -74,6 +74,42 @@ def read_version(path: Path) -> tuple[int, str]:
     if not re.fullmatch(r"\d+\.\d+\.\d+(?:-beta)?", version_name):
         sys.exit("versionName must use X.Y.Z or X.Y.Z-beta")
     return version_code, version_name
+
+
+def validate_git_state(root: Path) -> None:
+    git_dir = root / ".git"
+    if not git_dir.exists():
+        print("Warning: .git not found; skipping release branch/push checks")
+        return
+
+    def git(*args: str) -> str:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=root,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return result.stdout.strip()
+
+    branch = git("rev-parse", "--abbrev-ref", "HEAD")
+    if branch != "main":
+        sys.exit(f"Release packaging must run from main, current branch: {branch}")
+
+    tracked_changes = git("status", "--porcelain", "--untracked-files=no")
+    if tracked_changes:
+        sys.exit("Commit tracked source/version/release-note changes before packaging a release")
+
+    try:
+        upstream = git("rev-parse", "--abbrev-ref", "@{upstream}")
+        ahead = int(git("rev-list", "--count", "@{upstream}..HEAD"))
+    except (subprocess.CalledProcessError, ValueError):
+        print("Warning: no usable upstream branch; cannot verify whether HEAD was pushed")
+        return
+
+    if ahead > 0:
+        sys.exit(f"HEAD has {ahead} unpushed commit(s) relative to {upstream}; push source before packaging")
 
 
 def validate_apk(path: Path) -> None:
