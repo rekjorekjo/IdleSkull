@@ -80,30 +80,33 @@ fun DefeatAnimationOverlay(
         timeline.snapTo(0f)
         timeline.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 16_800, easing = LinearEasing),
+            animationSpec = tween(durationMillis = 14_280, easing = LinearEasing),
         )
         currentOnFinished()
     }
 
     val t = timeline.value
-    val move = eased(phase(t, 0.00f, 0.08f))
 
-    // The blast is deliberately slow: about 3.9 seconds from the center to the corners.
+    // Keep the pre-typewriter stages at essentially the same real-time pacing as r9.
+    // The normalized phase points change because the total sequence is shorter now.
+    val move = eased(phase(t, 0.0000f, 0.0941f))
+
+    // The blast remains about 3.9 seconds from the center to the corners.
     // It is rendered as layered radial light, beams and glowing sparks, never as a solid blob.
-    val explosion = eased(phase(t, 0.06f, 0.29f))
-    val explosionFade = phase(t, 0.29f, 0.34f)
+    val explosion = eased(phase(t, 0.0706f, 0.3412f))
+    val explosionFade = phase(t, 0.3412f, 0.4000f)
 
-    val cleanStage = phase(t, 0.30f, 0.35f)
-    val cracked = eased(phase(t, 0.34f, 0.43f))
+    val cleanStage = phase(t, 0.3529f, 0.4118f)
+    val cracked = eased(phase(t, 0.4000f, 0.5059f))
 
-    // About five seconds for the whole word. The word has a fixed left edge; only the
-    // newest character gets the slam animation, so D never recenters as more letters appear.
-    val typing = phase(t, 0.43f, 0.73f)
-    val defeatedExit = phase(t, 0.75f, 0.80f)
-    val skullExit = phase(t, 0.73f, 0.80f)
+    // Typewriter speed is doubled: the whole word now lands in about 2.5 seconds.
+    // The word keeps its fixed left edge; only the newest character gets the slam animation.
+    val typing = phase(t, 0.5059f, 0.6824f)
+    val defeatedExit = phase(t, 0.7059f, 0.7647f)
+    val skullExit = phase(t, 0.6824f, 0.7647f)
 
-    val upgrade = eased(phase(t, 0.79f, 0.96f))
-    val exit = phase(t, 0.96f, 1.00f)
+    val upgrade = eased(phase(t, 0.7529f, 0.9529f))
+    val exit = phase(t, 0.9529f, 1.0000f)
 
     val typedPosition = typing * defeatedText.length
     val visibleLetters = if (typing <= 0f) {
@@ -140,7 +143,7 @@ fun DefeatAnimationOverlay(
 
         // Intact skull is the lowest visual layer. It rushes into place, then the light blast
         // explicitly renders above it and consumes it. It never stays on top of the explosion.
-        if (move < 1f || t < 0.30f) {
+        if (move < 1f || t < 0.3529f) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -149,7 +152,7 @@ fun DefeatAnimationOverlay(
                     .graphicsLayer {
                         scaleX = 1f + 0.52f * move
                         scaleY = 1f + 0.52f * move
-                        alpha = (1f - phase(t, 0.16f, 0.28f)).coerceIn(0f, 1f)
+                        alpha = (1f - phase(t, 0.1882f, 0.3294f)).coerceIn(0f, 1f)
                     },
             ) {
                 SkullBackdrop(

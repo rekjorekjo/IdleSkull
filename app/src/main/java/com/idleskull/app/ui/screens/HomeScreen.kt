@@ -88,17 +88,25 @@ fun HomeScreen(viewModel: TimerViewModel) {
     }
 
     val hpNow = (now / 1_000L) * 1_000L
-    val barNow = (now / 5_000L) * 5_000L
     val summaryNow = (now / 10_000L) * 10_000L
     val displayMs = active?.displayMsAt(now) ?: 0L
     val liveProjection = remember(hpNow, active, viewModel.skullState) {
         viewModel.projectedSkull(hpNow)
     }
-    val barProjection = remember(barNow, active, viewModel.skullState) {
-        viewModel.projectedSkull(barNow)
-    }
     val liveSkull = liveProjection.state
-    val barSkull = barProjection.state
+
+    // The bar/eye state advances in exact 5-second chunks measured from the current
+    // timer's effective elapsed duration, not from wall-clock boundaries. That means a
+    // newly started timer keeps the previous bar for the first 5 seconds, then changes
+    // by exactly 5 seconds of damage/healing at a time (pause time remains excluded).
+    val barElapsedMs = active?.let { timer ->
+        (timer.elapsedAt(now) / 5_000L) * 5_000L
+    } ?: 0L
+    val barSkull = remember(barElapsedMs, active, viewModel.skullState) {
+        active?.let { timer ->
+            SkullRules.apply(timer.skullAtStart, timer.activity, barElapsedMs).state
+        } ?: viewModel.skullState
+    }
     val homeStatusText = when {
         active == null -> stringResource(R.string.copy_home_idle)
         active.status == TimerStatus.PAUSED -> stringResource(R.string.copy_home_paused)
@@ -509,8 +517,8 @@ private fun SkullEyeOverlay(
         fun drawEye(cxRatio: Float, cyRatio: Float) {
             val cx = w * cxRatio
             val cy = h * cyRatio
-            val rx = w * (0.0215f + hpRatio * 0.006f)
-            val ry = h * (0.0135f + hpRatio * 0.004f)
+            val rx = w * (0.0260f + hpRatio * 0.0080f)
+            val ry = h * (0.0165f + hpRatio * 0.0055f)
 
             drawOval(
                 brush = Brush.radialGradient(
@@ -554,8 +562,8 @@ private fun SkullEyeOverlay(
             )
         }
 
-        drawEye(0.405f, 0.385f)
-        drawEye(0.582f, 0.385f)
+        drawEye(0.392f, 0.405f)
+        drawEye(0.596f, 0.405f)
     }
 }
 
