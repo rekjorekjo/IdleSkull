@@ -73,7 +73,8 @@ fun DefeatAnimationOverlay(
     val hotCore = if (darkMode) Color(0xFFFFF3C4) else Color(0xFFF4FFE7)
     val outerGlow = if (darkMode) Color(0xFF8F0012) else Color(0xFF087434)
 
-    val crackColor = if (darkMode) Color.Black else Color.White
+    val crackColor = Color(0xFF242424)
+    val crackAccent = Color(0xFF666666)
     val defeatedText = stringResource(R.string.copy_defeated)
 
     LaunchedEffect(eventId) {
@@ -97,7 +98,9 @@ fun DefeatAnimationOverlay(
     val explosionFade = phase(t, 0.3412f, 0.4000f)
 
     val cleanStage = phase(t, 0.3529f, 0.4118f)
-    val cracked = eased(phase(t, 0.4000f, 0.5059f))
+    val crackedSkull = eased(phase(t, 0.4000f, 0.4245f))
+    // Draw the fracture itself over about 0.5 seconds instead of fading in a finished path.
+    val crackGrowth = eased(phase(t, 0.4245f, 0.4595f))
 
     // Typewriter speed is doubled: the whole word now lands in about 2.5 seconds.
     // The word keeps its fixed left edge; only the newest character gets the slam animation.
@@ -184,15 +187,15 @@ fun DefeatAnimationOverlay(
         }
 
         // A cracked skull only comes back after the explosion has already taken over the screen.
-        if (cracked > 0f && skullExit < 1f) {
+        if (crackedSkull > 0f && skullExit < 1f) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(skullSize)
                     .graphicsLayer {
-                        scaleX = 1.18f - 0.08f * cracked
-                        scaleY = 1.18f - 0.08f * cracked
-                        alpha = cracked * (1f - skullExit)
+                        scaleX = 1.18f - 0.08f * crackedSkull
+                        scaleY = 1.18f - 0.08f * crackedSkull
+                        alpha = crackedSkull * (1f - skullExit)
                     },
             ) {
                 SkullBackdrop(
@@ -203,8 +206,8 @@ fun DefeatAnimationOverlay(
                 )
                 CrackOverlay(
                     color = crackColor,
-                    accent = accentColor,
-                    progress = cracked,
+                    accent = crackAccent,
+                    progress = crackGrowth,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -385,20 +388,48 @@ private fun CrackOverlay(
     modifier: Modifier = Modifier,
 ) {
     Canvas(modifier) {
-        fun crack(points: List<Offset>, width: Float) {
-            if (points.size < 2) return
+        fun crack(points: List<Offset>, width: Float, localProgress: Float = progress) {
+            val p = localProgress.coerceIn(0f, 1f)
+            if (points.size < 2 || p <= 0f) return
+
+            val px = points.map { point ->
+                Offset(point.x * size.width, point.y * size.height)
+            }
+            val segmentLengths = px.zipWithNext { a, b ->
+                hypot(b.x - a.x, b.y - a.y)
+            }
+            val totalLength = segmentLengths.sum()
+            if (totalLength <= 0f) return
+
+            var remaining = totalLength * p
             val path = Path().apply {
-                moveTo(points.first().x * size.width, points.first().y * size.height)
-                points.drop(1).forEach { lineTo(it.x * size.width, it.y * size.height) }
+                moveTo(px.first().x, px.first().y)
+                for (index in segmentLengths.indices) {
+                    if (remaining <= 0f) break
+                    val start = px[index]
+                    val end = px[index + 1]
+                    val segmentLength = segmentLengths[index]
+                    if (remaining >= segmentLength) {
+                        lineTo(end.x, end.y)
+                        remaining -= segmentLength
+                    } else {
+                        val local = (remaining / segmentLength).coerceIn(0f, 1f)
+                        lineTo(
+                            start.x + (end.x - start.x) * local,
+                            start.y + (end.y - start.y) * local,
+                        )
+                        remaining = 0f
+                    }
+                }
             }
             drawPath(
                 path,
-                accent.copy(alpha = 0.42f * progress),
+                accent.copy(alpha = 0.46f),
                 style = Stroke(width + 2.6.dp.toPx()),
             )
             drawPath(
                 path,
-                color.copy(alpha = 0.94f * progress),
+                color.copy(alpha = 0.96f),
                 style = Stroke(width),
             )
         }
@@ -416,18 +447,21 @@ private fun CrackOverlay(
                 Offset(0.48f, 0.27f), Offset(0.39f, 0.31f), Offset(0.35f, 0.39f), Offset(0.29f, 0.43f),
             ),
             w * 0.78f,
+            phase(progress, 0.18f, 1f),
         )
         crack(
             listOf(
                 Offset(0.52f, 0.33f), Offset(0.61f, 0.36f), Offset(0.65f, 0.43f), Offset(0.72f, 0.47f),
             ),
             w * 0.78f,
+            phase(progress, 0.24f, 1f),
         )
         crack(
             listOf(
                 Offset(0.50f, 0.45f), Offset(0.44f, 0.52f), Offset(0.47f, 0.60f), Offset(0.42f, 0.67f),
             ),
             w * 0.66f,
+            phase(progress, 0.40f, 1f),
         )
     }
 }
