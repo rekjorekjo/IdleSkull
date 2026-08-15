@@ -8,8 +8,6 @@ build/
 app/build/
 app/release/
 app/debug/
-app/src/debug/
-app/src/release/
 local.properties
 captures/
 .externalNativeBuild/
@@ -21,6 +19,8 @@ dist/
 *.apk
 *.aab
 *.apks
+*.jpg
+*.png
 
 # Signing secrets
 *.jks
