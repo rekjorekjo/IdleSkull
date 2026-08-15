@@ -2,6 +2,7 @@ package com.idleskull.app
 
 import android.app.Application
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -11,8 +12,11 @@ import com.idleskull.app.model.ActiveTimer
 import com.idleskull.app.model.ActivityType
 import com.idleskull.app.model.EndReason
 import com.idleskull.app.model.SkullProjection
+import com.idleskull.app.model.SkullRules
 import com.idleskull.app.model.SkullState
 import com.idleskull.app.model.TimeSession
+import com.idleskull.app.model.TimerMode
+import com.idleskull.app.model.TimerStatus
 import com.idleskull.app.widget.TimerWidgetProvider
 
 class TimerViewModel(application: Application) : AndroidViewModel(application) {
@@ -33,6 +37,19 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     var lastCountdownMs: Long by mutableStateOf(repository.lastCountdownMs())
         private set
 
+    var defeatAnimationSerial: Long by mutableLongStateOf(0L)
+        private set
+
+    private var observedTimerStartedAt: Long? = active?.startedAt
+    private var observedDefeatedCount: Int = active
+        ?.takeIf {
+            it.activity == ActivityType.GRIND &&
+                it.elapsedAt(System.currentTimeMillis()) >= SkullRules.MIN_VALID_SESSION_MS
+        }
+        ?.projectedSkullAt(System.currentTimeMillis())
+        ?.defeated
+        ?: 0
+
     val statsSessions: List<TimeSession>
         get() = DebugDataSeeder.mergeForStats(sessions)
 
@@ -41,6 +58,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startCountUp(activity: ActivityType) {
         active = repository.startCountUp(activity)
+        bindDefeatObserver(active, includeCurrent = false)
         refreshWidget()
     }
 
@@ -48,6 +66,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         repository.setLastCountdownMs(plannedMs)
         lastCountdownMs = plannedMs
         active = repository.startCountdown(activity, plannedMs)
+        bindDefeatObserver(active, includeCurrent = false)
         refreshWidget()
     }
 
@@ -57,12 +76,14 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun pauseOrResume() {
+        observeDefeat()
         active = repository.pauseOrResume()
         if (active == null) reloadStateOnly()
         refreshWidget()
     }
 
     fun end() {
+        observeDefeat()
         repository.finish(EndReason.MANUAL)
         active = null
         reloadStateOnly()
@@ -70,7 +91,15 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun tick(now: Long = System.currentTimeMillis()) {
-        if (repository.ensureCountdownComplete(now)) {
+        observeDefeat(now)
+        val current = active ?: return
+        val countdownFinished =
+            current.mode == TimerMode.COUNT_DOWN &&
+                current.status == TimerStatus.RUNNING &&
+                current.plannedMs != null &&
+                current.elapsedAt(now) >= current.plannedMs
+        if (countdownFinished) {
+            repository.finish(EndReason.COUNTDOWN_FINISHED, now)
             active = null
             reloadStateOnly()
             refreshWidget()
@@ -84,8 +113,17 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun reload() {
-        repository.ensureCountdownComplete()
-        active = repository.loadActive()
+        val now = System.currentTimeMillis()
+        observeDefeat(now)
+        repository.ensureCountdownComplete(now)
+        val reloaded = repository.loadActive()
+        if (reloaded?.startedAt != observedTimerStartedAt) {
+            bindDefeatObserver(reloaded, includeCurrent = true, now = now)
+        } else if (reloaded == null) {
+            observedTimerStartedAt = null
+            observedDefeatedCount = 0
+        }
+        active = reloaded
         reloadStateOnly()
         darkMode = repository.isDarkMode()
         lastCountdownMs = repository.lastCountdownMs()
@@ -107,7 +145,41 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         active = null
         sessions = emptyList()
         skullState = repository.loadSkullState()
+        observedTimerStartedAt = null
+        observedDefeatedCount = 0
         refreshWidget()
+    }
+
+    private fun observeDefeat(now: Long = System.currentTimeMillis()) {
+        val current = active ?: return
+        if (current.startedAt != observedTimerStartedAt) {
+            bindDefeatObserver(current, includeCurrent = false, now = now)
+        }
+        if (current.activity != ActivityType.GRIND) return
+        if (current.elapsedAt(now) < SkullRules.MIN_VALID_SESSION_MS) return
+
+        val projection = current.projectedSkullAt(now)
+        if (projection.defeated > observedDefeatedCount) {
+            observedDefeatedCount = projection.defeated
+            defeatAnimationSerial += 1L
+        }
+    }
+
+    private fun bindDefeatObserver(
+        timer: ActiveTimer?,
+        includeCurrent: Boolean,
+        now: Long = System.currentTimeMillis(),
+    ) {
+        observedTimerStartedAt = timer?.startedAt
+        observedDefeatedCount = if (
+            includeCurrent &&
+            timer?.activity == ActivityType.GRIND &&
+            timer.elapsedAt(now) >= SkullRules.MIN_VALID_SESSION_MS
+        ) {
+            timer.projectedSkullAt(now).defeated
+        } else {
+            0
+        }
     }
 
     private fun reloadStateOnly() {

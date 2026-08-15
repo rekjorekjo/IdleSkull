@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -98,19 +100,24 @@ fun StatsScreen(viewModel: TimerViewModel) {
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        PixelText(
-            stringResource(com.idleskull.app.R.string.copy_stats_title),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PixelText(
+                stringResource(com.idleskull.app.R.string.copy_stats_title),
+                modifier = Modifier.weight(1f),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            ActivityTypeSelector(
+                activity = activity,
+                onSelected = { activityName = it.name },
+                modifier = Modifier.width(92.dp),
+            )
+        }
+
         Spacer(Modifier.height(10.dp))
-
-        ActivityTypeSelector(
-            activity = activity,
-            onSelected = { activityName = it.name },
-        )
-
-        Spacer(Modifier.height(8.dp))
 
         StatsRangeSelector(
             range = range,
@@ -151,42 +158,65 @@ fun StatsScreen(viewModel: TimerViewModel) {
 private fun ActivityTypeSelector(
     activity: ActivityType,
     onSelected: (ActivityType) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val items = listOf(ActivityType.SLACK to "摆", ActivityType.GRIND to "卷")
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, PixelCutShape)
-            .border(2.dp, MaterialTheme.colorScheme.outline, PixelCutShape)
-            .padding(2.dp),
-    ) {
-        Row(Modifier.fillMaxWidth()) {
-            items.forEachIndexed { index, (value, label) ->
-                val selected = value == activity
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                        .clickable { onSelected(value) }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    PixelText(
-                        label,
-                        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                if (index < items.lastIndex) {
-                    Box(
-                        Modifier
-                            .width(2.dp)
-                            .height(38.dp)
-                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.55f)),
-                    )
-                }
+    var expanded by remember { mutableStateOf(false) }
+    val label = if (activity == ActivityType.SLACK) "摆" else "卷"
+
+    Box(modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface, PixelCutShape)
+                .border(2.dp, MaterialTheme.colorScheme.outline, PixelCutShape)
+                .clickable { expanded = true }
+                .padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PixelText(
+                text = label,
+                modifier = Modifier.weight(1f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            PixelText(
+                text = if (expanded) "▲" else "▼",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.width(92.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            shape = PixelCutShape,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+        ) {
+            listOf(
+                ActivityType.SLACK to "摆",
+                ActivityType.GRIND to "卷",
+            ).forEach { (value, text) ->
+                DropdownMenuItem(
+                    text = {
+                        PixelText(
+                            text = text,
+                            modifier = Modifier.fillMaxWidth(),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelected(value)
+                    },
+                )
             }
         }
     }

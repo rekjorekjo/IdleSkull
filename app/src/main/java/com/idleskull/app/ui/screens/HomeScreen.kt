@@ -50,6 +50,7 @@ import com.idleskull.app.R
 import com.idleskull.app.TimerViewModel
 import com.idleskull.app.model.ActiveTimer
 import com.idleskull.app.model.ActivityType
+import com.idleskull.app.model.SkullRules
 import com.idleskull.app.model.SkullState
 import com.idleskull.app.model.TimerMode
 import com.idleskull.app.model.TimerStatus
@@ -73,15 +74,24 @@ fun HomeScreen(viewModel: TimerViewModel) {
     val active = viewModel.active
 
     LaunchedEffect(active?.status, active?.anchorAt, active?.plannedMs, active?.activity) {
+        now = System.currentTimeMillis()
+        if (active?.status != TimerStatus.RUNNING) return@LaunchedEffect
+
         while (true) {
-            now = System.currentTimeMillis()
-            viewModel.tick(now)
-            delay(250)
+            val current = System.currentTimeMillis()
+            now = current
+            viewModel.tick(current)
+            val untilNextSecond = 1_000L - (current % 1_000L)
+            delay(untilNextSecond.coerceIn(250L, 1_000L))
         }
     }
 
+    val gameNow = (now / 5_000L) * 5_000L
+    val summaryNow = (now / 10_000L) * 10_000L
     val displayMs = active?.displayMsAt(now) ?: 0L
-    val projection = viewModel.projectedSkull(now)
+    val projection = remember(gameNow, active, viewModel.skullState) {
+        viewModel.projectedSkull(gameNow)
+    }
     val skull = projection.state
     val homeStatusText = when {
         active == null -> stringResource(R.string.copy_home_idle)
@@ -89,10 +99,14 @@ fun HomeScreen(viewModel: TimerViewModel) {
         active.activity == ActivityType.SLACK -> stringResource(R.string.copy_home_slacking)
         else -> stringResource(R.string.copy_home_grinding, skull.level)
     }
-    val slackToday = StatsEngine.today(viewModel.sessions, ActivityType.SLACK) +
-        activeTodayContribution(active, ActivityType.SLACK, now)
-    val grindToday = StatsEngine.today(viewModel.sessions, ActivityType.GRIND) +
-        activeTodayContribution(active, ActivityType.GRIND, now)
+    val slackToday = remember(viewModel.sessions, active, summaryNow) {
+        StatsEngine.today(viewModel.sessions, ActivityType.SLACK) +
+            activeTodayContribution(active, ActivityType.SLACK, summaryNow)
+    }
+    val grindToday = remember(viewModel.sessions, active, summaryNow) {
+        StatsEngine.today(viewModel.sessions, ActivityType.GRIND) +
+            activeTodayContribution(active, ActivityType.GRIND, summaryNow)
+    }
 
     Box(Modifier.fillMaxSize()) {
         SkullBackdrop(
@@ -104,7 +118,6 @@ fun HomeScreen(viewModel: TimerViewModel) {
         )
         SkullEyeOverlay(
             skull = skull,
-            now = now,
             darkMode = viewModel.darkMode,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -119,30 +132,13 @@ fun HomeScreen(viewModel: TimerViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             PixelText(
-                text = stringResource(R.string.copy_home_title),
-                fontSize = 25.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(6.dp))
-            PixelText(
                 text = "今天  摆 ${formatShort(slackToday)} · 卷 ${formatShort(grindToday)}",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-            )
-
-            Spacer(Modifier.height(18.dp))
-
-            PixelText(
-                text = "SKULL Lv.${skull.level}",
-                modifier = Modifier.fillMaxWidth(),
-                fontSize = 15.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(8.dp))
-            SkullHealthBar(skull)
+
             Spacer(Modifier.height(18.dp))
 
             TimerPixelText(
@@ -158,15 +154,6 @@ fun HomeScreen(viewModel: TimerViewModel) {
                 fontSize = 11.sp,
                 textAlign = TextAlign.Center,
             )
-            if (projection.defeated > 0 && active?.activity == ActivityType.GRIND) {
-                Spacer(Modifier.height(4.dp))
-                PixelText(
-                    text = "本次已击破 ${projection.defeated} 个骷髅",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 10.sp,
-                    textAlign = TextAlign.Center,
-                )
-            }
 
             Spacer(Modifier.height(20.dp))
 
@@ -231,7 +218,23 @@ fun HomeScreen(viewModel: TimerViewModel) {
                 }
             }
 
-            Spacer(Modifier.height(244.dp))
+            Spacer(Modifier.height(20.dp))
+            PixelText(
+                text = "SKULL Lv.${skull.level}",
+                modifier = Modifier.fillMaxWidth(),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            SkullHealthBar(
+                skull = skull,
+                modifier = Modifier.fillMaxWidth(0.84f),
+            )
+
+            // Reserve the lower stage for the large skull artwork. The game status now sits
+            // between the controls and the skull instead of competing with the timer header.
+            Spacer(Modifier.height(254.dp))
         }
     }
 
@@ -250,10 +253,13 @@ fun HomeScreen(viewModel: TimerViewModel) {
 }
 
 @Composable
-private fun SkullHealthBar(skull: SkullState) {
+private fun SkullHealthBar(
+    skull: SkullState,
+    modifier: Modifier = Modifier,
+) {
     val fill = Color(0xFF8E3030)
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -272,7 +278,7 @@ private fun SkullHealthBar(skull: SkullState) {
         }
         Spacer(Modifier.height(5.dp))
         PixelText(
-            text = "${skull.hp} / ${skull.maxHp}",
+            text = "${skull.hp}/${skull.maxHp}",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
@@ -450,14 +456,15 @@ private fun sanitizeNumber(raw: String, maxDigits: Int): String = raw.filter(Cha
 @Composable
 private fun SkullEyeOverlay(
     skull: SkullState,
-    now: Long,
     darkMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val hpRatio = skull.hpRatio
     if (hpRatio <= 0.015f) return
 
-    val pulse = 0.80f + 0.20f * kotlin.math.sin(now / 360.0).toFloat()
+    // Keep the glow tied to HP only. Avoid a continuous pulse so the static skull
+    // does not force extra redraws while the timer is running.
+    val pulse = 1f
     val intensity = if (darkMode) {
         (0.12f + hpRatio * 0.80f).coerceIn(0.12f, 0.92f)
     } else {
@@ -550,6 +557,7 @@ private fun activeTodayContribution(
     now: Long,
 ): Long {
     if (active == null || active.activity != activity) return 0L
+    if (active.elapsedAt(now) < SkullRules.MIN_VALID_SESSION_MS) return 0L
     val startOfDay = java.time.LocalDate.now()
         .atStartOfDay(java.time.ZoneId.systemDefault())
         .toInstant()

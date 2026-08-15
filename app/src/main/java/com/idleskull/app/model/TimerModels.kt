@@ -26,10 +26,22 @@ data class SkullProjection(
 )
 
 object SkullRules {
-    private const val BASE_HP = 1_800L
-    private const val HP_STEP = 450L
+    private const val BASE_HP = 60L
+    const val MIN_VALID_SESSION_MS = 60_000L
 
-    fun maxHp(level: Int): Long = BASE_HP + (level.coerceAtLeast(1) - 1L) * HP_STEP
+    /**
+     * Lv.1 is a fixed 10,000 HP. From Lv.2 onward the raw curve is
+     * 10,000 * ln(n^PI), i.e. 10,000 * PI * ln(n).
+     *
+     * The displayed/gameplay value is rounded down to the nearest 1,000 HP so
+     * every level has a clean-looking total such as 21,000 or 72,000.
+     */
+    fun maxHp(level: Int): Long {
+        val n = level.coerceAtLeast(1)
+        if (n == 1) return BASE_HP
+        val raw = BASE_HP * kotlin.math.PI * kotlin.math.ln(n.toDouble())
+        return ((raw / 1_000.0).toLong() * 1_000L).coerceAtLeast(BASE_HP)
+    }
 
     fun apply(
         start: SkullState,

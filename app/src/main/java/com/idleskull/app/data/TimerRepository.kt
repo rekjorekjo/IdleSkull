@@ -16,6 +16,12 @@ import org.json.JSONObject
 class TimerRepository(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
+    init {
+        synchronized(lock) {
+            ensureCurrentGameRulesUnlocked()
+        }
+    }
+
     fun loadActive(): ActiveTimer? = synchronized(lock) {
         val raw = prefs.getString(KEY_ACTIVE, null) ?: return@synchronized null
         runCatching { decodeActive(JSONObject(raw)) }.getOrNull()
@@ -105,7 +111,9 @@ class TimerRepository(context: Context) {
     }
 
     fun loadSessions(): List<TimeSession> = synchronized(lock) {
-        loadSessionsUnlocked().sortedByDescending { it.startedAt }
+        loadSessionsUnlocked()
+            .filter { it.durationMs >= SkullRules.MIN_VALID_SESSION_MS }
+            .sortedByDescending { it.startedAt }
     }
 
     fun isDarkMode(): Boolean = prefs.getBoolean(KEY_DARK_MODE, false)
@@ -138,6 +146,7 @@ class TimerRepository(context: Context) {
             .putString(KEY_SESSIONS, "[]")
             .putInt(KEY_SKULL_LEVEL, 1)
             .putLong(KEY_SKULL_HP, SkullRules.maxHp(1))
+            .putInt(KEY_GAME_RULES_VERSION, CURRENT_GAME_RULES_VERSION)
             .commit()
     }
 
@@ -145,7 +154,7 @@ class TimerRepository(context: Context) {
         active.mode == TimerMode.COUNT_DOWN && active.status == TimerStatus.RUNNING &&
             active.elapsedAt(now) >= (active.plannedMs ?: Long.MAX_VALUE)
 
-    private fun finishUnlocked(active: ActiveTimer, reason: EndReason, now: Long): TimeSession {
+    private fun finishUnlocked(active: ActiveTimer, reason: EndReason, now: Long): TimeSession? {
         val completedMs = active.completedDurationMs()
         val effectiveEnd = if (
             active.mode == TimerMode.COUNT_DOWN &&
@@ -161,6 +170,13 @@ class TimerRepository(context: Context) {
         } else active.completedSegments
 
         val durationMs = segments.sumOf { it.durationMs }
+        if (durationMs < SkullRules.MIN_VALID_SESSION_MS) {
+            // Treat sub-minute runs as accidental taps. Neither the log nor the
+            // provisional skull damage/healing is persisted.
+            prefs.edit().remove(KEY_ACTIVE).commit()
+            return null
+        }
+
         val projection = SkullRules.apply(active.skullAtStart, active.activity, durationMs)
         saveSkullState(projection.state)
 
@@ -183,6 +199,23 @@ class TimerRepository(context: Context) {
         saveSessions(sessions.take(5000))
         prefs.edit().remove(KEY_ACTIVE).commit()
         return session
+    }
+
+
+    private fun ensureCurrentGameRulesUnlocked() {
+        if (prefs.getInt(KEY_GAME_RULES_VERSION, 0) == CURRENT_GAME_RULES_VERSION) return
+
+        // 0.3.0 beta intentionally starts the skull game from scratch when the
+        // HP rules change. Old 1,800-HP / pre-rounded skull progress and any
+        // active timer tied to it are discarded instead of migrated.
+        prefs.edit()
+            .remove(KEY_ACTIVE)
+            .remove(LEGACY_KEY_SKULL_LEVEL)
+            .remove(LEGACY_KEY_SKULL_HP)
+            .putInt(KEY_SKULL_LEVEL, 1)
+            .putLong(KEY_SKULL_HP, SkullRules.maxHp(1))
+            .putInt(KEY_GAME_RULES_VERSION, CURRENT_GAME_RULES_VERSION)
+            .commit()
     }
 
     private fun loadActiveUnlocked(): ActiveTimer? {
@@ -287,8 +320,12 @@ class TimerRepository(context: Context) {
         private const val KEY_SESSIONS = "sessions"
         private const val KEY_DARK_MODE = "dark_mode"
         private const val KEY_LAST_COUNTDOWN_MS = "last_countdown_ms"
-        private const val KEY_SKULL_LEVEL = "skull_level"
-        private const val KEY_SKULL_HP = "skull_hp"
+        private const val KEY_SKULL_LEVEL = "skull_level_030_logcurve"
+        private const val KEY_SKULL_HP = "skull_hp_030_logcurve"
+        private const val LEGACY_KEY_SKULL_LEVEL = "skull_level"
+        private const val LEGACY_KEY_SKULL_HP = "skull_hp"
+        private const val KEY_GAME_RULES_VERSION = "game_rules_version"
+        private const val CURRENT_GAME_RULES_VERSION = 2
         private val lock = Any()
     }
 }

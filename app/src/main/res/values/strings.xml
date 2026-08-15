@@ -4,7 +4,6 @@
     <string name="widget_name">计时器</string>
 
     <!-- 可直接修改的常用文案。改这里即可统一调整主要页面文字。 -->
-    <string name="copy_home_title">今天你卷还是摆？</string>
     <string name="copy_home_idle">还没开始。至少现在没有。</string>
     <string name="copy_home_slacking">摆烂计时中 · 骷髅正在回血……</string>
     <string name="copy_home_grinding">开卷计时中 · 正在攻击 Lv.%1$d 骷髅</string>
@@ -23,7 +22,8 @@
     <string name="copy_minute">分</string>
     <string name="copy_second">秒</string>
 
-    <string name="copy_stats_title">时间记录</string>
+    <string name="copy_stats_title">日志</string>
+    <string name="copy_defeated">DEFEATED</string>
     <string name="copy_export">导出</string>
     <string name="copy_export_footer">今天你又摆烂了？ · IdleSkull</string>
     <string name="copy_unnamed">未命名</string>
