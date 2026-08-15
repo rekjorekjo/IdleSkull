@@ -66,7 +66,10 @@ import kotlinx.coroutines.delay
 import java.util.Locale
 
 @Composable
-fun HomeScreen(viewModel: TimerViewModel) {
+fun HomeScreen(
+    viewModel: TimerViewModel,
+    hideSkullArtwork: Boolean = false,
+) {
     var selectedModeName by rememberSaveable { mutableStateOf(TimerMode.COUNT_UP.name) }
     var selectedCountdownMs by rememberSaveable { mutableStateOf(viewModel.lastCountdownMs) }
     var showCountdownDialog by rememberSaveable { mutableStateOf(false) }
@@ -231,17 +234,23 @@ fun HomeScreen(viewModel: TimerViewModel) {
                 modifier = Modifier.size(320.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                SkullBackdrop(
-                    darkMode = viewModel.darkMode,
-                    level = liveSkull.level,
-                    modifier = Modifier.fillMaxSize(),
-                    alpha = if (viewModel.darkMode) 0.48f else 0.80f,
-                )
-                SkullEyeOverlay(
-                    skull = barSkull,
-                    darkMode = viewModel.darkMode,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                // Once a defeat sequence starts, the full-screen overlay owns the skull.
+                // Keep this 320dp slot so the home layout does not jump, but hide the
+                // original art/eye glow immediately; otherwise two skulls are visible
+                // while the defeated skull rushes from the bottom into the center.
+                if (!hideSkullArtwork) {
+                    SkullBackdrop(
+                        darkMode = viewModel.darkMode,
+                        level = liveSkull.level,
+                        modifier = Modifier.fillMaxSize(),
+                        alpha = if (viewModel.darkMode) 0.48f else 0.80f,
+                    )
+                    SkullEyeOverlay(
+                        skull = barSkull,
+                        darkMode = viewModel.darkMode,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))

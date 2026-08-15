@@ -394,7 +394,7 @@ private fun CrackOverlay(
             drawPath(
                 path,
                 accent.copy(alpha = 0.42f * progress),
-                style = Stroke(width + 2.dp.toPx()),
+                style = Stroke(width + 2.6.dp.toPx()),
             )
             drawPath(
                 path,
@@ -403,7 +403,7 @@ private fun CrackOverlay(
             )
         }
 
-        val w = 2.2.dp.toPx()
+        val w = 3.2.dp.toPx()
         crack(
             listOf(
                 Offset(0.50f, 0.15f), Offset(0.47f, 0.24f), Offset(0.53f, 0.31f),

@@ -51,6 +51,9 @@ fun IdleSkullApp(viewModel: TimerViewModel = viewModel()) {
 
     IdleSkullTheme(darkMode = viewModel.darkMode) {
         Box(Modifier.fillMaxSize()) {
+            val defeatEvent = viewModel.defeatAnimationSerial
+            val defeatOverlayActive = defeatEvent > consumedDefeatAnimation
+
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 Column(
                     Modifier
@@ -60,7 +63,7 @@ fun IdleSkullApp(viewModel: TimerViewModel = viewModel()) {
                 ) {
                     Box(Modifier.weight(1f)) {
                         when (tab) {
-                            MainTab.TIMER -> HomeScreen(viewModel)
+                            MainTab.TIMER -> HomeScreen(viewModel, hideSkullArtwork = defeatOverlayActive)
                             MainTab.STATS -> StatsScreen(viewModel)
                             MainTab.SETTINGS -> SettingsScreen(viewModel)
                         }
@@ -78,8 +81,7 @@ fun IdleSkullApp(viewModel: TimerViewModel = viewModel()) {
                 }
             }
 
-            val defeatEvent = viewModel.defeatAnimationSerial
-            if (defeatEvent > consumedDefeatAnimation) {
+            if (defeatOverlayActive) {
                 DefeatAnimationOverlay(
                     darkMode = viewModel.darkMode,
                     eventId = defeatEvent,
