@@ -45,8 +45,10 @@
 
     <string name="copy_update_found">发现新版本</string>
     <string name="copy_update_download_install">下载并安装</string>
+    <string name="copy_update_waiting">等待系统下载…</string>
     <string name="copy_update_downloading">正在下载 %1$d%%</string>
-    <string name="copy_update_launching_installer">正在打开安装程序…</string>
+    <string name="copy_update_verifying">正在校验安装包…</string>
+    <string name="copy_update_install">安装更新</string>
     <string name="copy_update_download_failed_retry">下载失败 · 重试</string>
     <string name="copy_update_open_release">打开 GitHub</string>
 </resources>

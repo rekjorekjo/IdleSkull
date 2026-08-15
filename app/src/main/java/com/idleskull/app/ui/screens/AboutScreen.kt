@@ -16,12 +16,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -36,11 +41,15 @@ import com.idleskull.app.ui.components.PixelPanel
 import com.idleskull.app.ui.components.PixelParagraph
 import com.idleskull.app.ui.components.PixelText
 import com.idleskull.app.ui.components.SkullBackdrop
-import com.idleskull.app.update.AppUpdateChecker
-import com.idleskull.app.update.AppUpdateDownloader
+import com.idleskull.app.update.AppUpdateManager
+import com.idleskull.app.update.GitHubRelease
+import com.idleskull.app.update.InstallLaunchResult
 import com.idleskull.app.update.UpdateCheckResult
 import com.idleskull.app.update.UpdateDownloadState
 import com.idleskull.app.update.UpdateConfig
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 private enum class AboutDocument(val title: String) {
     UPDATE_NOTES("更新说明"),
@@ -57,12 +66,13 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val coroutineScope = rememberCoroutineScope()
+    val updateManager = remember(context) { AppUpdateManager(context) }
     var document by remember { mutableStateOf<AboutDocument?>(null) }
     var updateStatus by remember { mutableStateOf("手动检查") }
     var updateError by remember { mutableStateOf<String?>(null) }
     var checking by remember { mutableStateOf(false) }
-    var availableUpdate by remember { mutableStateOf<UpdateCheckResult.Available?>(null) }
-    var updateDownloadState by remember { mutableStateOf<UpdateDownloadState?>(null) }
+    var availableUpdate by remember { mutableStateOf<GitHubRelease?>(null) }
 
     document?.let { selected ->
         BackHandler { document = null }
@@ -81,24 +91,11 @@ fun AboutScreen(
     }
 
     availableUpdate?.let { update ->
-        BackHandler {
-            availableUpdate = null
-            updateDownloadState = null
-        }
+        BackHandler { availableUpdate = null }
         UpdateDetailsScreen(
             update = update,
-            downloadState = updateDownloadState,
-            onBack = {
-                availableUpdate = null
-                updateDownloadState = null
-            },
-            onDownload = {
-                if (updateDownloadState !is UpdateDownloadState.Downloading) {
-                    AppUpdateDownloader.downloadAndInstall(context, update) { state ->
-                        updateDownloadState = state
-                    }
-                }
-            },
+            updateManager = updateManager,
+            onBack = { availableUpdate = null },
             onOpenRelease = { uriHandler.openUri(update.releaseUrl) },
         )
         return
@@ -163,26 +160,24 @@ fun AboutScreen(
                         updateStatus = "正在检查…"
                         updateError = null
                         availableUpdate = null
-                        // A manual check always performs a fresh request. It does not reuse
-                        // the silent startup check or any cached result.
-                        AppUpdateChecker.checkNow(context) { result ->
-                            checking = false
-                            when (result) {
+                        updateManager.resetFailedDownloadForManualCheck()
+                        coroutineScope.launch {
+                            when (val result = updateManager.checkForUpdate()) {
                                 UpdateCheckResult.UpToDate -> {
                                     updateStatus = "已是最新版本"
                                     updateError = null
                                 }
-                                is UpdateCheckResult.Available -> {
-                                    updateStatus = "发现 ${result.versionName}"
+                                is UpdateCheckResult.UpdateAvailable -> {
+                                    updateStatus = "发现 ${result.release.versionName}"
                                     updateError = null
-                                    updateDownloadState = null
-                                    availableUpdate = result
+                                    availableUpdate = result.release
                                 }
-                                is UpdateCheckResult.Failed -> {
+                                UpdateCheckResult.CheckFailed -> {
                                     updateStatus = "检查失败"
-                                    updateError = result.message
+                                    updateError = "无法连接更新源，请稍后重试"
                                 }
                             }
+                            checking = false
                         }
                     },
                 )
@@ -283,12 +278,39 @@ private fun AboutDocumentScreen(
 
 @Composable
 private fun UpdateDetailsScreen(
-    update: UpdateCheckResult.Available,
-    downloadState: UpdateDownloadState?,
+    update: GitHubRelease,
+    updateManager: AppUpdateManager,
     onBack: () -> Unit,
-    onDownload: () -> Unit,
     onOpenRelease: () -> Unit,
 ) {
+    val context = LocalContext.current
+    var downloadStatus by remember(update.tagName) { mutableStateOf(updateManager.currentStatus()) }
+    var installMessage by remember(update.tagName) { mutableStateOf<String?>(null) }
+    var verifying by remember(update.tagName) { mutableStateOf(false) }
+
+    LaunchedEffect(update.tagName) {
+        while (isActive) {
+            downloadStatus = updateManager.currentStatus()
+            delay(
+                when (downloadStatus.state) {
+                    UpdateDownloadState.WAITING,
+                    UpdateDownloadState.DOWNLOADING,
+                    UpdateDownloadState.VERIFYING -> 700L
+                    else -> 1_500L
+                },
+            )
+        }
+    }
+
+    LaunchedEffect(downloadStatus.state) {
+        if (downloadStatus.state == UpdateDownloadState.VERIFYING && !verifying) {
+            verifying = true
+            updateManager.verifyPendingDownloadIfNeeded()
+            downloadStatus = updateManager.currentStatus()
+            verifying = false
+        }
+    }
+
     Column(
         Modifier
             .fillMaxSize()
@@ -312,44 +334,93 @@ private fun UpdateDetailsScreen(
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                if (update.releaseNotes.isNotBlank()) {
-                    PixelParagraph(
-                        text = update.releaseNotes,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
-                    )
-                } else {
-                    PixelParagraph(
-                        text = "该版本没有填写更新说明。",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
-                    )
-                }
+                PixelParagraph(
+                    text = update.releaseNotes.ifBlank { "该版本没有填写更新说明。" },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                )
             }
         }
-        val downloadLabel = when (val state = downloadState) {
-            null -> stringResource(R.string.copy_update_download_install)
-            is UpdateDownloadState.Downloading -> stringResource(R.string.copy_update_downloading, state.percent)
-            UpdateDownloadState.LaunchingInstaller -> stringResource(R.string.copy_update_launching_installer)
-            is UpdateDownloadState.Failed -> stringResource(R.string.copy_update_download_failed_retry)
+
+        val downloadLabel = when (downloadStatus.state) {
+            UpdateDownloadState.NONE -> stringResource(R.string.copy_update_download_install)
+            UpdateDownloadState.WAITING -> stringResource(R.string.copy_update_waiting)
+            UpdateDownloadState.DOWNLOADING -> stringResource(
+                R.string.copy_update_downloading,
+                downloadStatus.progressPercent ?: 0,
+            )
+            UpdateDownloadState.VERIFYING -> stringResource(R.string.copy_update_verifying)
+            UpdateDownloadState.READY -> stringResource(R.string.copy_update_install)
+            UpdateDownloadState.FAILED -> stringResource(R.string.copy_update_download_failed_retry)
         }
+        val busy = downloadStatus.state == UpdateDownloadState.WAITING ||
+            downloadStatus.state == UpdateDownloadState.DOWNLOADING ||
+            downloadStatus.state == UpdateDownloadState.VERIFYING
+
         PixelButton(
             text = downloadLabel,
-            onClick = onDownload,
+            onClick = {
+                installMessage = null
+                when (downloadStatus.state) {
+                    UpdateDownloadState.NONE,
+                    UpdateDownloadState.FAILED -> {
+                        updateManager.resetFailedDownloadForManualCheck()
+                        if (!updateManager.startDownload(update)) {
+                            installMessage = "无法启动系统下载，请稍后重试。"
+                        }
+                        downloadStatus = updateManager.currentStatus()
+                    }
+                    UpdateDownloadState.READY -> {
+                        val activity = context.findActivity()
+                        if (activity == null) {
+                            installMessage = "无法打开系统安装程序。"
+                        } else {
+                            when (updateManager.requestInstall(activity)) {
+                                InstallLaunchResult.LAUNCHED -> Unit
+                                InstallLaunchResult.PERMISSION_REQUIRED -> {
+                                    installMessage = "请允许 IdleSkull 安装未知应用，返回后再次点击“安装更新”。"
+                                }
+                                InstallLaunchResult.NO_VERIFIED_UPDATE -> {
+                                    installMessage = "安装包尚未校验完成。"
+                                }
+                                InstallLaunchResult.INSTALLER_UNAVAILABLE -> {
+                                    installMessage = "系统安装程序不可用。"
+                                }
+                                InstallLaunchResult.FAILED -> {
+                                    installMessage = "无法打开系统安装程序。"
+                                }
+                            }
+                        }
+                    }
+                    else -> Unit
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
-            enabled = downloadState !is UpdateDownloadState.Downloading &&
-                downloadState !is UpdateDownloadState.LaunchingInstaller,
+            enabled = !busy,
         )
-        if (downloadState is UpdateDownloadState.Failed) {
+
+        installMessage?.let { message ->
             PixelParagraph(
-                text = downloadState.message,
+                text = message,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 11.sp,
             )
         }
-        PixelButton(stringResource(R.string.copy_update_open_release), onOpenRelease, Modifier.fillMaxWidth(), inverted = true)
+
+        PixelButton(
+            stringResource(R.string.copy_update_open_release),
+            onOpenRelease,
+            Modifier.fillMaxWidth(),
+            inverted = true,
+        )
         Spacer(Modifier.height(16.dp))
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 private fun readUpdateNotes(context: android.content.Context): String =
@@ -373,7 +444,7 @@ private fun readGeneratedRaw(context: android.content.Context, resourceName: Str
 private val PRIVACY_TEXT = """
 • IdleSkull 不要求注册账号，不包含广告，也不接入行为统计或云同步。
 • 计时状态、历史记录、记录名称和主题设置保存在设备本地。
-• 应用启动时会访问 GitHub Release 中的更新清单检查新版本；发现新版本后仅发送系统通知，不会后台自动下载。只有用户主动点击“下载并安装”时才会下载 APK，并交由 Android 系统安装程序确认安装。
+• 应用启动时会读取 GitHub 最新正式 Release 的更新清单检查新版本；更新清单不可用时会回退到 GitHub Releases API。发现新版本后仅发送系统通知，不会后台自动下载。只有用户主动点击“下载并安装”时，才交由 Android 系统下载管理器下载 APK；完成大小与 SHA-256 校验后，再由系统安装程序确认安装。
 • Android 13 及以上系统可能在首次使用时请求通知权限，用于新版本提醒。
 • 卸载应用或清除应用数据会删除本机保存的历史记录。
 """.trimIndent()

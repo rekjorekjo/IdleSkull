@@ -1,7 +1,9 @@
-# IdleSkull 0.2.21-beta
+# IdleSkull 0.2.24-beta
 
-- 修复更新交互：发现新版本后不再只提供“打开 GitHub Release”，主按钮改为“下载并安装”。
-- APK 直接使用最新 Release 的 `latest.json` 中 `apk.url` 下载，并校验文件大小和 SHA-256。
-- 下载完成后直接唤起 Android 系统安装程序；不会后台自动下载或静默安装。
-- 新版本系统通知点击后也直接指向 Release 中的 APK 下载地址。
-- 版本更新为 0.2.21-beta（versionCode 22）。
+- 更新机制改为参考 The Day 的稳定实现：优先读取 GitHub `releases/latest/download/latest.json`，失败时仅回退一次 `/releases/latest` API。
+- 移除 Atom feed、Releases 列表扫描和 Release Asset API 等多层更新发现逻辑，减少网络请求与中间故障点。
+- APK 下载改由 Android 系统 DownloadManager 管理，App 退到后台或界面重建时下载状态仍可继续维护。
+- 下载完成后校验 APK 文件大小与 SHA-256，通过后再交给 Android 系统安装程序。
+- 修复失败状态残留：用户再次手动检查更新时会清理上一次失败的下载状态，不再被旧失败记录卡住。
+- Beta tag 继续使用 `vX.Y.Z-beta`，但 GitHub Release 必须作为普通 Release 发布（不要勾选 prerelease），以保证 GitHub `latest` 路径可用。
+- 版本更新为 0.2.24-beta（versionCode 27）。

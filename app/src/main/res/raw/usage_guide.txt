@@ -37,8 +37,9 @@ IdleSkull 使用说明
 
 
 应用更新
-• App 启动时会静默检查最新 GitHub Release；发现新版时只提醒，不会在后台自动下载。更新发现使用 GitHub Releases feed，并直接读取最新 Release 中的 latest.json，不依赖匿名 REST API。
-• 关于页点击“检查更新”后，如发现新版本，可点击“下载并安装”直接下载 Release 中的 APK。
-• 手动检查每次都会重新请求；一次失败不会被保存成后续结果。检查失败时，“关于”页会显示具体错误信息，方便判断是网络、Release 清单还是服务器响应问题。
-• 下载时会校验 latest.json 提供的文件大小和 SHA-256；校验通过后打开 Android 系统安装程序，由系统完成最终安装确认。
-• 如果当前安装的是 Debug APK，而 GitHub Release 使用了不同签名，系统可能不允许直接覆盖安装，需要先卸载 Debug 版或使用相同签名构建。
+• App 启动时会静默检查 GitHub 最新普通 Release：优先直接读取固定的 latest.json，只有主清单请求失败时才回退到 GitHub latest Release API。
+• Beta 版本仍使用“0.2.x-beta / v0.2.x-beta”命名，但 GitHub Release 本身不要勾选“Set as a pre-release”，否则 GitHub 的 latest 路径会忽略它。
+• 关于页点击“检查更新”会发起一次新的检查；此前失败的下载状态会先清理，不会把一次失败永久带到后续检查。
+• 发现新版本后，可点击“下载并安装”。APK 由 Android 系统 DownloadManager 下载，而不是由 App 自己保持后台下载线程。
+• 下载完成后会校验 latest.json 中记录的 APK 文件大小与 SHA-256；校验成功后按钮变为“安装更新”，最终仍由 Android 系统安装程序确认。
+• 如果当前安装的是 Debug APK，而 GitHub Release 使用了不同签名，Android 可能拒绝覆盖安装，需要使用相同签名或先卸载 Debug 版。

@@ -13,8 +13,8 @@
 [![Gradle](https://img.shields.io/badge/Gradle-9.1.0-02303A?style=for-the-badge&logo=gradle&logoColor=white)](#开发与构建)
 [![GitHub](https://img.shields.io/badge/GitHub-Releases-181717?style=for-the-badge&logo=github&logoColor=white)](#更新机制)
 
-![Version](https://img.shields.io/badge/version-0.2.19--beta-F2B134?style=flat-square)
-![versionCode](https://img.shields.io/badge/versionCode-23-555555?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.2.24--beta-F2B134?style=flat-square)
+![versionCode](https://img.shields.io/badge/versionCode-27-555555?style=flat-square)
 ![Status](https://img.shields.io/badge/status-Beta-E67E22?style=flat-square)
 ![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?style=flat-square)
 ![targetSdk](https://img.shields.io/badge/targetSdk-36-3DDC84?style=flat-square)
@@ -158,36 +158,51 @@ Debug 统计页会把确定性的半年样本与设备真实记录在内存中�
 
 ## 更新机制
 
-IdleSkull 的在线更新只认 **GitHub Release 里的 `latest.json` 资产**，不再读取 `main/latest.json`，也不再做双源兜底。
+IdleSkull 的更新链路改为直接复用 The Day 已验证过的思路，刻意保持简单：**固定 Release 清单地址优先，GitHub Releases API 只做一次兜底，APK 交给 Android 系统 DownloadManager 下载。**
 
 检查流程：
 
 ```text
-GitHub Releases Atom feed
+https://github.com/rekjorekjo/IdleSkull/releases/latest/download/latest.json
+        ↓ 失败时才回退
+https://api.github.com/repos/rekjorekjo/IdleSkull/releases/latest
         ↓
-读取最前面的已发布 Release entry（包含 prerelease）
+比较版本
         ↓
-直接请求 /releases/download/<tag>/latest.json
+发现新版 → 仅提醒
         ↓
-比较 versionCode
+用户主动点击“下载并安装”
         ↓
-有新版本 → 系统通知 / 手动检查结果 → 用户点击后下载 APK
+Android DownloadManager 下载 APK
+        ↓
+校验 size + SHA-256
+        ↓
+Android 系统安装程序
 ```
 
-这里刻意不使用 GitHub 的 `/releases/latest` 接口，因为该接口只返回最新的非 prerelease 正式版本；IdleSkull 的 beta 版本会作为 prerelease 发布。也不再调用匿名 GitHub REST Releases API：客户端只借助公开 `releases.atom` 确定最新发布 tag，真正的版本信息仍以该 Release 自带的 `latest.json` 为唯一真相。
+主路径只请求一个固定的 `latest.json` URL，不再解析 Atom feed、不再扫描 Releases 列表，也不再通过 Release Asset API 二次寻找清单。清单请求失败时才使用 GitHub 的 `/releases/latest` API 作为兜底；清单路径使用 `versionCode` 判断更新，API 兜底使用语义版本判断。
 
-`latest.json` 是发布资产中的唯一更新清单。最新 Release 如果缺少该文件，更新检查会直接失败，而不会偷偷退回旧 Release 或仓库主分支中的旧清单，避免再次出现“明明发了新版但客户端读到旧版本”的情况。
+下载阶段不再由 IdleSkull 自己维持长连接。用户主动下载后，任务交给 Android 系统 `DownloadManager`，因此切到后台、界面重建或 App 进程被回收时，下载状态仍由系统维护。下载成功后会检查清单提供的文件大小和 SHA-256，通过后才允许打开系统安装程序。一次失败的下载状态会在下一次用户手动检查前清理，不会让后续检查一直卡在失败状态。
 
-更新比较始终只使用递增的整数 **`versionCode`**；`versionName` 仅用于展示。启动自动检查只在发现新版本时通知，不会后台偷跑下载；手动“检查更新”每次都会重新请求，不复用启动检查状态，也不会把一次失败缓存成后续检查结果。Release 发现不再调用 GitHub REST API，而是读取公开的 `releases.atom` feed，再直接请求最新 Release 的 `latest.json`，避免匿名 REST API 限流造成连续失败。发现新版后，“下载并安装”会读取 `latest.json` 中的 `apk.url` 下载 APK，并使用清单中的 `size` / `sha256` 校验文件，校验通过后交给 Android 系统安装程序。请求禁用本地缓存。
+### Beta 发布规则
 
-发布时执行 `scripts/release.py`，生成：
+为了继续使用 GitHub 稳定的 `/releases/latest` 与 `/releases/latest/download/latest.json` 路径，**`-beta` 只作为版本名 / tag 名的一部分，GitHub Release 本身仍发布为普通 Release**：
 
 ```text
-dist/IdleSkull-vX.Y.Z-beta.apk
-dist/latest.json
+tag: v0.2.24-beta
+Release title: IdleSkull v0.2.24-beta
+Set as a pre-release: 不勾选
+Draft: 不勾选
 ```
 
-这两个文件一起上传到同一个 GitHub Release 即可。无需再把 `latest.json` 提交到 `main`，也无需 Release 后同步工作流。
+也就是说版本名可以继续叫 `0.2.x-beta`，但 GitHub 的 `prerelease` 标记必须为 `false`。每个 Release 至少上传：
+
+```text
+IdleSkull-vX.Y.Z-beta.apk
+latest.json
+```
+
+`latest.json` 继续包含 `versionCode`、`versionName`、Release notes、APK 文件名 / URL / size / SHA-256。根目录 `latest.json` 不参与客户端更新检查。
 
 ## 版本规则
 
@@ -201,8 +216,8 @@ X.Y.Z
 当前版本：
 
 ```properties
-versionCode=23
-versionName=0.2.20-beta
+versionCode=27
+versionName=0.2.24-beta
 ```
 
 更新判断只比较递增的 **`versionCode`**；`versionName` 负责用户可读的版本展示。
@@ -216,7 +231,6 @@ versionName=0.2.20-beta
 | ![Compose](https://img.shields.io/badge/-Jetpack%20Compose-4285F4?logo=jetpackcompose&logoColor=white) | App UI 与状态驱动界面 |
 | ![AndroidX](https://img.shields.io/badge/-AndroidX-3DDC84?logo=android&logoColor=white) | Activity、Lifecycle 等基础组件 |
 | ![Gradle](https://img.shields.io/badge/-Gradle-02303A?logo=gradle&logoColor=white) | 构建、生成资源与发布说明同步 |
-| ![Python](https://img.shields.io/badge/-Python-3776AB?logo=python&logoColor=white) | Release APK / `latest.json` 打包脚本 |
 | ![GitHub](https://img.shields.io/badge/-GitHub-181717?logo=github&logoColor=white) | 源码、Release 与更新清单托管 |
 
 ### 构建基线
@@ -248,7 +262,6 @@ IdleSkull/
 │       └── res/               # Android 资源
 ├── app/src/debug/             # Debug 专用测试数据
 ├── app/src/release/           # Release 专用 no-op 调试实现
-├── scripts/release.py         # Release 打包、清单生成与 Git 状态检查
 ├── release-notes.md           # 发布说明唯一人工维护来源
 ├── version.properties         # versionCode / versionName
 └── README.md
