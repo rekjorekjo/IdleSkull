@@ -53,6 +53,7 @@ import com.idleskull.app.model.ActivityType
 import com.idleskull.app.model.SkullCatalog
 import com.idleskull.app.model.SkullRules
 import com.idleskull.app.model.SkullState
+import com.idleskull.app.model.SkullTheme
 import com.idleskull.app.model.TimerMode
 import com.idleskull.app.model.TimerStatus
 import com.idleskull.app.ui.StatsEngine
@@ -562,9 +563,37 @@ private fun SkullEyeOverlay(
             )
         }
 
-        drawEye(0.392f, 0.405f)
-        drawEye(0.596f, 0.405f)
+        val anchors = eyeAnchorsFor(skull.level)
+        drawEye(anchors.leftX, anchors.leftY)
+        drawEye(anchors.rightX, anchors.rightY)
     }
+}
+
+private data class SkullEyeAnchors(
+    val leftX: Float,
+    val leftY: Float,
+    val rightX: Float,
+    val rightY: Float,
+)
+
+/**
+ * Eye-light anchors are measured from the actual 1254x1254 theme artwork rather than
+ * sharing one coordinate for every skull. The generated characters do not place their
+ * eye sockets at exactly the same height (the samurai/chef are especially lower), and
+ * ContentScale.Fit preserves these normalized coordinates inside the square 320dp box.
+ *
+ * Keeping the values normalized also means asset down-scaling/PNG optimization does not
+ * require recalibrating the glow positions.
+ */
+private fun eyeAnchorsFor(level: Int): SkullEyeAnchors = when (SkullCatalog.identity(level).theme) {
+    SkullTheme.BABY -> SkullEyeAnchors(0.377f, 0.445f, 0.623f, 0.445f)
+    SkullTheme.CLOWN -> SkullEyeAnchors(0.424f, 0.420f, 0.597f, 0.420f)
+    SkullTheme.DANCE_KING -> SkullEyeAnchors(0.415f, 0.481f, 0.588f, 0.481f)
+    SkullTheme.CHEF -> SkullEyeAnchors(0.415f, 0.498f, 0.585f, 0.498f)
+    SkullTheme.SAMURAI -> SkullEyeAnchors(0.409f, 0.523f, 0.592f, 0.523f)
+    SkullTheme.PIRATE -> SkullEyeAnchors(0.414f, 0.442f, 0.590f, 0.442f)
+    SkullTheme.SERPENT_KING -> SkullEyeAnchors(0.410f, 0.476f, 0.590f, 0.476f)
+    SkullTheme.DEMON -> SkullEyeAnchors(0.389f, 0.430f, 0.610f, 0.430f)
 }
 
 private fun activeTodayContribution(
