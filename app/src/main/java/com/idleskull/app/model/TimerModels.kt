@@ -26,7 +26,7 @@ data class SkullProjection(
 )
 
 object SkullRules {
-    private const val BASE_HP = 60L
+    private const val BASE_HP = 10_000L
     const val MIN_VALID_SESSION_MS = 60_000L
 
     /**

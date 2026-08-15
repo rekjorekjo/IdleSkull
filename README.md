@@ -14,7 +14,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-Releases-181717?style=for-the-badge&logo=github)](#更新机制)
 
 ![Version](https://img.shields.io/badge/version-0.3.0--beta-F2B134?style=flat-square)
-![versionCode](https://img.shields.io/badge/versionCode-28-555555?style=flat-square)
+![versionCode](https://img.shields.io/badge/versionCode-29-555555?style=flat-square)
 ![Status](https://img.shields.io/badge/status-Beta-E67E22?style=flat-square)
 ![minSdk](https://img.shields.io/badge/minSdk-26-3DDC84?style=flat-square)
 ![targetSdk](https://img.shields.io/badge/targetSdk-36-3DDC84?style=flat-square)
@@ -137,7 +137,7 @@ Debug 与 Release 使用不同 source set。Debug 只在统计层叠加确定性
 
 骷髅素材继续使用独立的浅 / 深色 PNG，并保持主体水平居中。眼窝光效作为独立绘制层叠加。
 
-击败骷髅时会播放全屏 Compose 动画：骷髅从下方冲到中央并放大，浅色模式用黑色、深色模式用白色的墨团从中央扩散铺满屏幕，随后以绿 / 红主题色爆开；爆炸后显示带固定裂纹 Overlay 的骷髅，再从左下向右上扫过一笔由粗到细的“提”，最后以逐字重击的打字机效果敲出 `DEFEATED`。裂纹仍是独立绘制层，不永久修改原始骷髅素材。动画只是遮住画面，计时和新等级骷髅的伤害仍在后台继续结算，动画结束后直接显示最新状态。
+击败骷髅时会播放全屏 Compose 动画：骷髅从下方冲到中央并放大，浅色模式用黑色、深色模式用白色的墨团从中央扩散；随后绿 / 红主题色光团用约 3.25 秒从中央扩散到覆盖整个屏幕，再显示带固定裂纹 Overlay 的骷髅。原先的斜向书法“提”改为黑 / 白不规则泼墨与飞溅墨点，最后以逐字重击的打字机效果敲出 `DEFEATED`。裂纹仍是独立绘制层，不永久修改原始骷髅素材。动画只是遮住画面，计时和新等级骷髅的伤害仍在后台继续结算，动画结束后直接显示最新状态。
 
 ## 更新机制
 
@@ -177,7 +177,7 @@ Beta 仍使用 `0.3.0-beta / v0.3.0-beta` 命名，但为了让 GitHub `/release
 版本统一读取根目录：
 
 ```properties
-versionCode=28
+versionCode=29
 versionName=0.3.0-beta
 ```
 

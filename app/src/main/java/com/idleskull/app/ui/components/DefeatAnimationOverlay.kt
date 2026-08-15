@@ -33,15 +33,15 @@ import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.hypot
+import kotlin.math.min
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * Full-screen boss defeat sequence.
  *
  * The animation is deliberately rendered from deterministic vector/Compose primitives so
- * no generated bitmap frames are needed: skull rush -> ink flood -> color burst -> cracked
- * skull -> rising calligraphy stroke -> typewriter "DEFEATED".
+ * no generated bitmap frames are needed: skull rush -> ink flood -> slow color burst ->
+ * cracked skull -> ink splash -> typewriter "DEFEATED".
  */
 @Composable
 fun DefeatAnimationOverlay(
@@ -62,21 +62,26 @@ fun DefeatAnimationOverlay(
         timeline.snapTo(0f)
         timeline.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 3_600, easing = LinearEasing),
+            animationSpec = tween(durationMillis = 8_800, easing = LinearEasing),
         )
         currentOnFinished()
     }
 
     val t = timeline.value
-    val move = eased(phase(t, 0.00f, 0.14f))
-    val ink = eased(phase(t, 0.08f, 0.30f))
-    val inkFade = phase(t, 0.26f, 0.38f)
-    val explosion = phase(t, 0.24f, 0.44f)
-    val cleanStage = phase(t, 0.34f, 0.48f)
-    val cracked = eased(phase(t, 0.38f, 0.54f))
-    val stroke = eased(phase(t, 0.48f, 0.69f))
-    val typing = phase(t, 0.58f, 0.92f)
-    val exit = phase(t, 0.93f, 1.00f)
+    val move = eased(phase(t, 0.00f, 0.10f))
+    val ink = eased(phase(t, 0.05f, 0.24f))
+    val inkFade = phase(t, 0.22f, 0.30f)
+
+    // Roughly 3.25 seconds of the 8.8 second sequence. The themed burst now visibly grows
+    // all the way from the center to beyond the screen corners before it starts fading.
+    val explosion = eased(phase(t, 0.20f, 0.57f))
+    val explosionFade = phase(t, 0.57f, 0.65f)
+
+    val cleanStage = phase(t, 0.62f, 0.69f)
+    val cracked = eased(phase(t, 0.61f, 0.72f))
+    val splash = eased(phase(t, 0.70f, 0.80f))
+    val typing = phase(t, 0.76f, 0.94f)
+    val exit = phase(t, 0.95f, 1.00f)
 
     val typedPosition = typing * defeatedText.length
     val visibleLetters = if (typing <= 0f) {
@@ -126,23 +131,25 @@ fun DefeatAnimationOverlay(
                 )
             }
 
-            if (explosion > 0f && explosion < 1f) {
-                val grow = (explosion / 0.56f).coerceIn(0f, 1f)
-                val fade = if (explosion <= 0.50f) 1f else (1f - (explosion - 0.50f) / 0.50f)
-                    .coerceIn(0f, 1f)
+            if (explosion > 0f && explosionFade < 1f) {
+                val fade = 1f - explosionFade
+                val grow = explosion.coerceIn(0f, 1f)
                 drawCircle(
-                    color = accentColor.copy(alpha = 0.92f * fade),
+                    color = accentColor.copy(alpha = 0.94f * fade),
                     radius = maxRadius * grow,
                     center = center,
                 )
 
-                val rayCount = 18
+                // Keep the burst feeling explosive without making the main expansion itself fast.
+                // Rays lengthen with the same 3+ second growth, while their tips are intentionally
+                // uneven so the result is less like a perfect loading circle.
+                val rayCount = 20
                 for (i in 0 until rayCount) {
                     val angle = (2.0 * PI * i / rayCount).toFloat()
-                    val variance = 0.78f + ((i * 37) % 9) / 18f
-                    val innerRadius = maxRadius * 0.08f * grow
+                    val variance = 0.72f + ((i * 37) % 11) / 20f
+                    val innerRadius = maxRadius * 0.07f * grow
                     val outerRadius = maxRadius * variance * grow
-                    val half = 0.035f + (i % 3) * 0.008f
+                    val half = 0.030f + (i % 4) * 0.007f
                     val path = Path().apply {
                         moveTo(
                             center.x + cos(angle - half) * innerRadius,
@@ -158,12 +165,12 @@ fun DefeatAnimationOverlay(
                         )
                         close()
                     }
-                    drawPath(path, accentColor.copy(alpha = 0.72f * fade))
+                    drawPath(path, accentColor.copy(alpha = 0.62f * fade))
                 }
             }
         }
 
-        if (move < 1f || t < 0.34f) {
+        if (move < 1f || t < 0.30f) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -172,13 +179,22 @@ fun DefeatAnimationOverlay(
                     .graphicsLayer {
                         scaleX = 1f + 0.52f * move
                         scaleY = 1f + 0.52f * move
-                        alpha = (1f - phase(t, 0.24f, 0.34f)).coerceIn(0f, 1f)
+                        alpha = (1f - phase(t, 0.22f, 0.30f)).coerceIn(0f, 1f)
                     },
             ) {
                 SkullBackdrop(
                     darkMode = darkMode,
                     modifier = Modifier.fillMaxSize(),
                     alpha = 1f,
+                )
+            }
+        }
+
+        if (splash > 0f) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawInkSplash(
+                    progress = splash,
+                    color = inkColor,
                 )
             }
         }
@@ -204,15 +220,6 @@ fun DefeatAnimationOverlay(
                     accent = accentColor,
                     progress = cracked,
                     modifier = Modifier.fillMaxSize(),
-                )
-            }
-        }
-
-        if (stroke > 0f) {
-            Canvas(Modifier.fillMaxSize()) {
-                drawRisingCalligraphyStroke(
-                    progress = stroke,
-                    color = accentColor,
                 )
             }
         }
@@ -283,47 +290,68 @@ private fun CrackOverlay(
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRisingCalligraphyStroke(
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawInkSplash(
     progress: Float,
     color: Color,
 ) {
     val p = progress.coerceIn(0f, 1f)
     if (p <= 0f) return
 
-    val p0 = Offset(size.width * 0.07f, size.height * 0.79f)
-    val p1 = Offset(size.width * 0.43f, size.height * 0.67f)
-    val p2 = Offset(size.width * 0.93f, size.height * 0.20f)
-    val samples = 28
-    val left = ArrayList<Offset>(samples + 1)
-    val right = ArrayList<Offset>(samples + 1)
-    val startWidth = 24.dp.toPx()
-    val endWidth = 2.2.dp.toPx()
+    val center = Offset(size.width * 0.50f, size.height * 0.55f)
+    val base = min(size.width, size.height) * 0.23f * p
+    val points = 30
+    val blob = Path()
 
-    for (i in 0..samples) {
-        val u = p * i / samples.toFloat()
-        val one = 1f - u
+    for (i in 0 until points) {
+        val angle = (2.0 * PI * i / points).toFloat()
+        val jagged = when (i % 7) {
+            0 -> 1.52f
+            1 -> 0.82f
+            2 -> 1.12f
+            3 -> 0.72f
+            4 -> 1.30f
+            5 -> 0.92f
+            else -> 1.06f
+        }
+        val wave = 1f + 0.10f * sin(angle * 5f + 0.8f)
+        val radius = base * jagged * wave
         val point = Offset(
-            x = one * one * p0.x + 2f * one * u * p1.x + u * u * p2.x,
-            y = one * one * p0.y + 2f * one * u * p1.y + u * u * p2.y,
+            x = center.x + cos(angle) * radius,
+            y = center.y + sin(angle) * radius * 0.72f,
         )
-        val tangent = Offset(
-            x = 2f * one * (p1.x - p0.x) + 2f * u * (p2.x - p1.x),
-            y = 2f * one * (p1.y - p0.y) + 2f * u * (p2.y - p1.y),
+        if (i == 0) blob.moveTo(point.x, point.y) else blob.lineTo(point.x, point.y)
+    }
+    blob.close()
+    drawPath(blob, color.copy(alpha = 0.88f))
+
+    // Satellite drops make the shape read as thrown ink rather than a decorative brush stroke.
+    val dropAngles = floatArrayOf(-2.85f, -2.35f, -1.92f, -1.35f, -0.72f, -0.20f, 0.36f, 0.94f, 1.42f, 2.05f, 2.58f)
+    for (i in dropAngles.indices) {
+        val angle = dropAngles[i]
+        val distance = base * (1.35f + (i % 4) * 0.22f)
+        val dropCenter = Offset(
+            x = center.x + cos(angle) * distance,
+            y = center.y + sin(angle) * distance * 0.78f,
         )
-        val length = sqrt(tangent.x * tangent.x + tangent.y * tangent.y).coerceAtLeast(0.001f)
-        val normal = Offset(-tangent.y / length, tangent.x / length)
-        val width = startWidth + (endWidth - startWidth) * u
-        left += point + normal * (width / 2f)
-        right += point - normal * (width / 2f)
+        val radius = (3.5.dp.toPx() + (i % 5) * 2.2.dp.toPx()) * p
+        drawCircle(
+            color = color.copy(alpha = 0.72f + (i % 3) * 0.06f),
+            radius = radius,
+            center = dropCenter,
+        )
     }
 
-    val path = Path().apply {
-        moveTo(left.first().x, left.first().y)
-        left.drop(1).forEach { lineTo(it.x, it.y) }
-        right.asReversed().forEach { lineTo(it.x, it.y) }
-        close()
-    }
-    drawPath(path, color.copy(alpha = 0.96f))
+    // A few denser lobes keep the middle from looking like a simple star polygon.
+    drawCircle(
+        color = color.copy(alpha = 0.78f),
+        radius = base * 0.62f,
+        center = center + Offset(-base * 0.34f, base * 0.10f),
+    )
+    drawCircle(
+        color = color.copy(alpha = 0.82f),
+        radius = base * 0.54f,
+        center = center + Offset(base * 0.30f, -base * 0.12f),
+    )
 }
 
 private fun phase(value: Float, start: Float, end: Float): Float =
