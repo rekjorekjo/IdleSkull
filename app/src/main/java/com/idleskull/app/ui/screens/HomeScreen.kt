@@ -50,6 +50,7 @@ import com.idleskull.app.R
 import com.idleskull.app.TimerViewModel
 import com.idleskull.app.model.ActiveTimer
 import com.idleskull.app.model.ActivityType
+import com.idleskull.app.model.SkullCatalog
 import com.idleskull.app.model.SkullRules
 import com.idleskull.app.model.SkullState
 import com.idleskull.app.model.TimerMode
@@ -116,6 +117,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
     Box(Modifier.fillMaxSize()) {
         SkullBackdrop(
             darkMode = viewModel.darkMode,
+            level = barSkull.level,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .size(320.dp),
@@ -224,6 +226,15 @@ fun HomeScreen(viewModel: TimerViewModel) {
             }
 
             Spacer(Modifier.height(20.dp))
+            PixelText(
+                text = SkullCatalog.identity(liveSkull.level).title,
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
             PixelText(
                 text = "SKULL Lv.${liveSkull.level}",
                 modifier = Modifier.fillMaxWidth(),

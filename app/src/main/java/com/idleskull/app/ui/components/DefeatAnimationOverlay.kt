@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.idleskull.app.R
+import com.idleskull.app.model.SkullCatalog
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.cos
@@ -153,6 +154,7 @@ fun DefeatAnimationOverlay(
             ) {
                 SkullBackdrop(
                     darkMode = darkMode,
+                    level = defeatedLevel,
                     modifier = Modifier.fillMaxSize(),
                     alpha = 1f,
                 )
@@ -192,6 +194,7 @@ fun DefeatAnimationOverlay(
             ) {
                 SkullBackdrop(
                     darkMode = darkMode,
+                    level = defeatedLevel,
                     modifier = Modifier.fillMaxSize(),
                     alpha = 1f,
                 )
@@ -299,6 +302,9 @@ private fun UpgradeStage(
     val p = progress.coerceIn(0f, 1f)
     val impact = (1f - p).coerceIn(0f, 1f)
     val nextScale = 1f + 0.28f * impact * impact
+    val defeatedIdentity = SkullCatalog.identity(defeatedLevel)
+    val nextIdentity = SkullCatalog.identity(nextLevel)
+    val crossedTheme = SkullCatalog.isThemeTransition(defeatedLevel, nextLevel)
 
     Column(
         modifier = modifier
@@ -307,6 +313,45 @@ private fun UpgradeStage(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        PixelText(
+            text = if (crossedTheme) {
+                "${defeatedIdentity.theme.displayName} Boss 已被击败"
+            } else {
+                defeatedIdentity.title
+            },
+            color = if (crossedTheme) accent else foreground.copy(alpha = 0.72f),
+            fontSize = if (crossedTheme) 17.sp else 14.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        PixelText(
+            text = "Lv.$defeatedLevel",
+            color = foreground.copy(alpha = 0.62f),
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        PixelText(
+            text = "↓",
+            color = accent,
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.graphicsLayer {
+                scaleY = 0.65f + 0.35f * p
+            },
+        )
+        Spacer(Modifier.height(8.dp))
+        PixelText(
+            text = nextIdentity.title,
+            color = accent,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(5.dp))
         PixelText(
             text = "Lv.$nextLevel",
             color = accent,
@@ -323,25 +368,6 @@ private fun UpgradeStage(
             text = "HP $nextMaxHp",
             color = foreground,
             fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(14.dp))
-        PixelText(
-            text = "↑",
-            color = accent,
-            fontSize = 42.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.graphicsLayer {
-                scaleY = 0.65f + 0.35f * p
-            },
-        )
-        Spacer(Modifier.height(8.dp))
-        PixelText(
-            text = "Lv.$defeatedLevel",
-            color = foreground.copy(alpha = 0.62f),
-            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )

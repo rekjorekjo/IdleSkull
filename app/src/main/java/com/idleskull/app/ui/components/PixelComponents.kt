@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -46,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.idleskull.app.R
+import com.idleskull.app.model.SkullCatalog
+import com.idleskull.app.model.SkullTheme
 import kotlin.math.ceil
 import kotlin.math.min
 
@@ -78,16 +81,36 @@ object PixelCutShape : Shape {
 @Composable
 fun SkullBackdrop(
     darkMode: Boolean,
+    level: Int? = null,
     modifier: Modifier = Modifier,
     alpha: Float = 0.34f,
 ) {
+    val identity = level?.let(SkullCatalog::identity)
+    val drawable = when (identity?.theme) {
+        SkullTheme.BABY -> R.drawable.skull_theme_baby
+        SkullTheme.CLOWN -> R.drawable.skull_theme_clown
+        SkullTheme.DANCE_KING -> R.drawable.skull_theme_dance_king
+        SkullTheme.CHEF -> R.drawable.skull_theme_chef
+        SkullTheme.SAMURAI -> R.drawable.skull_theme_samurai
+        SkullTheme.PIRATE -> R.drawable.skull_theme_pirate
+        SkullTheme.SERPENT_KING -> R.drawable.skull_theme_serpent_king
+        SkullTheme.DEMON -> R.drawable.skull_theme_demon
+        null -> if (darkMode) R.drawable.skull_backdrop_v2_dark else R.drawable.skull_backdrop_v2_light
+    }
+
+    // Level-bound theme art is stored once as a white/alpha mask. Tinting keeps the same PNG
+    // usable in dark and light mode, so eight skull themes require eight files rather than
+    // sixteen. Callers without a level (for example About) keep the original brand artwork.
     androidx.compose.foundation.Image(
-        painter = painterResource(
-            if (darkMode) R.drawable.skull_backdrop_v2_dark else R.drawable.skull_backdrop_v2_light,
-        ),
+        painter = painterResource(drawable),
         contentDescription = null,
         modifier = modifier.alpha(alpha),
         contentScale = ContentScale.Fit,
+        colorFilter = if (identity == null) {
+            null
+        } else {
+            ColorFilter.tint(if (darkMode) Color.White else Color.Black)
+        },
     )
 }
 

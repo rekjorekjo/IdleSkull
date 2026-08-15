@@ -5,6 +5,62 @@ enum class TimerStatus { RUNNING, PAUSED }
 enum class ActivityType { SLACK, GRIND }
 enum class EndReason { MANUAL, COUNTDOWN_FINISHED }
 
+enum class SkullDifficulty(val code: String, val label: String) {
+    EASY("E", "Easy"),
+    MEDIUM("M", "Medium"),
+    HARD("H", "Hard"),
+    INSANE("I", "Insane"),
+    BOSS("B", "Boss"),
+}
+
+enum class SkullTheme(val displayName: String) {
+    BABY("宝宝骷髅"),
+    CLOWN("小丑骷髅"),
+    DANCE_KING("舞王骷髅"),
+    CHEF("厨子骷髅"),
+    SAMURAI("武士骷髅"),
+    PIRATE("海盗骷髅"),
+    SERPENT_KING("蛇王骷髅"),
+    DEMON("恶魔骷髅"),
+}
+
+data class SkullIdentity(
+    val theme: SkullTheme,
+    val difficulty: SkullDifficulty,
+) {
+    val title: String get() = "${theme.displayName} · ${difficulty.code}"
+}
+
+object SkullCatalog {
+    const val LEVELS_PER_THEME = 5
+
+    private val themes = SkullTheme.entries
+    private val difficulties = SkullDifficulty.entries
+
+    val designedMaxLevel: Int get() = themes.size * LEVELS_PER_THEME
+
+    fun identity(level: Int): SkullIdentity {
+        val safeLevel = level.coerceAtLeast(1)
+        val zeroBased = safeLevel - 1
+        val rawThemeIndex = zeroBased / LEVELS_PER_THEME
+
+        // The first content pack currently contains 8 themes / 40 levels. Levels above the
+        // available art deliberately keep using the last Boss art instead of imposing a hard
+        // gameplay cap. Adding another SkullTheme later automatically opens the next 5 levels.
+        if (rawThemeIndex >= themes.size) {
+            return SkullIdentity(themes.last(), SkullDifficulty.BOSS)
+        }
+
+        return SkullIdentity(
+            theme = themes[rawThemeIndex],
+            difficulty = difficulties[zeroBased % LEVELS_PER_THEME],
+        )
+    }
+
+    fun isThemeTransition(defeatedLevel: Int, nextLevel: Int): Boolean =
+        identity(defeatedLevel).theme != identity(nextLevel).theme
+}
+
 data class TimeSegment(
     val startAt: Long,
     val endAt: Long,
