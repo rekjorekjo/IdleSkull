@@ -80,7 +80,7 @@ fun SettingsScreen(viewModel: TimerViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 PixelText("数据", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 PixelButton("导出记录", { showExport = true }, Modifier.fillMaxWidth(), inverted = true)
-                PixelButton("清空历史记录", { showClearConfirm = true }, Modifier.fillMaxWidth())
+                PixelButton("清空数据", { showClearConfirm = true }, Modifier.fillMaxWidth())
             }
         }
 
@@ -98,7 +98,7 @@ fun SettingsScreen(viewModel: TimerViewModel) {
         ClearHistoryDialog(
             onDismiss = { showClearConfirm = false },
             onConfirm = {
-                viewModel.clearSessions()
+                viewModel.resetGame()
                 showClearConfirm = false
             },
         )
@@ -124,9 +124,9 @@ private fun ClearHistoryDialog(
                 Modifier.padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                PixelText("清空历史记录？", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                PixelText("清空全部数据？", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 PixelText(
-                    "此操作无法撤销。",
+                    "日志、当前计时和骷髅等级 / HP 都会清空，并重置为 Lv.1。此操作无法撤销。",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 11.sp,
                 )

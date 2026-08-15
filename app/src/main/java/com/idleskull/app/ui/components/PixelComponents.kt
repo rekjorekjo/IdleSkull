@@ -30,7 +30,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
@@ -98,9 +97,8 @@ fun SkullBackdrop(
         null -> if (darkMode) R.drawable.skull_backdrop_v2_dark else R.drawable.skull_backdrop_v2_light
     }
 
-    // Level-bound theme art is stored once as a white/alpha mask. Tinting keeps the same PNG
-    // usable in dark and light mode, so eight skull themes require eight files rather than
-    // sixteen. Callers without a level (for example About) keep the original brand artwork.
+    // Theme PNGs are complete grayscale artworks rather than alpha masks. Do not tint them:
+    // tinting would collapse all bone shading/detail into a flat silhouette.
     androidx.compose.foundation.Image(
         painter = painterResource(drawable),
         contentDescription = null,

@@ -115,22 +115,6 @@ fun HomeScreen(viewModel: TimerViewModel) {
     }
 
     Box(Modifier.fillMaxSize()) {
-        SkullBackdrop(
-            darkMode = viewModel.darkMode,
-            level = barSkull.level,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .size(320.dp),
-            alpha = if (viewModel.darkMode) 0.48f else 0.80f,
-        )
-        SkullEyeOverlay(
-            skull = barSkull,
-            darkMode = viewModel.darkMode,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .size(320.dp),
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -226,33 +210,42 @@ fun HomeScreen(viewModel: TimerViewModel) {
             }
 
             Spacer(Modifier.height(20.dp))
-            PixelText(
-                text = SkullCatalog.identity(liveSkull.level).title,
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(4.dp))
-            PixelText(
-                text = "SKULL Lv.${liveSkull.level}",
-                modifier = Modifier.fillMaxWidth(),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(8.dp))
             SkullHealthBar(
                 fillRatio = barSkull.hpRatio,
                 modifier = Modifier.fillMaxWidth(0.84f),
             )
             Spacer(Modifier.height(5.dp))
             SkullHpText(liveSkull)
+            Spacer(Modifier.height(12.dp))
 
-            // Reserve the lower stage for the large skull artwork. The game status now sits
-            // between the controls and the skull instead of competing with the timer header.
-            Spacer(Modifier.height(254.dp))
+            Box(
+                modifier = Modifier.size(320.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                SkullBackdrop(
+                    darkMode = viewModel.darkMode,
+                    level = liveSkull.level,
+                    modifier = Modifier.fillMaxSize(),
+                    alpha = if (viewModel.darkMode) 0.48f else 0.80f,
+                )
+                SkullEyeOverlay(
+                    skull = barSkull,
+                    darkMode = viewModel.darkMode,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            Spacer(Modifier.height(8.dp))
+            val identity = SkullCatalog.identity(liveSkull.level)
+            PixelText(
+                text = "${identity.homeTitle}  Lv.${liveSkull.level}",
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
         }
     }
 
@@ -294,7 +287,7 @@ private fun SkullHealthBar(
 @Composable
 private fun SkullHpText(skull: SkullState) {
     PixelText(
-        text = "${skull.hp}/${skull.maxHp}",
+        text = "HP: ${skull.hp}/${skull.maxHp}",
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,

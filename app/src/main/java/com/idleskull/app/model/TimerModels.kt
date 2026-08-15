@@ -6,11 +6,11 @@ enum class ActivityType { SLACK, GRIND }
 enum class EndReason { MANUAL, COUNTDOWN_FINISHED }
 
 enum class SkullDifficulty(val code: String, val label: String) {
-    EASY("E", "Easy"),
-    MEDIUM("M", "Medium"),
-    HARD("H", "Hard"),
-    INSANE("I", "Insane"),
-    BOSS("B", "Boss"),
+    EASY("E", "EASY"),
+    MEDIUM("M", "MEDIUM"),
+    HARD("H", "HARD"),
+    INSANE("I", "INSANE"),
+    BOSS("B", "BOSS"),
 }
 
 enum class SkullTheme(val displayName: String) {
@@ -29,6 +29,7 @@ data class SkullIdentity(
     val difficulty: SkullDifficulty,
 ) {
     val title: String get() = "${theme.displayName} · ${difficulty.code}"
+    val homeTitle: String get() = "${theme.displayName}（${difficulty.label}）"
 }
 
 object SkullCatalog {
