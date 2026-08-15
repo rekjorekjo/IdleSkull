@@ -4,9 +4,13 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
@@ -39,14 +44,18 @@ import kotlin.math.sin
 /**
  * Full-screen boss defeat sequence.
  *
- * The animation is deliberately rendered from deterministic vector/Compose primitives so
- * no generated bitmap frames are needed: skull rush -> ink flood -> slow color burst ->
- * cracked skull -> ink splash -> typewriter "DEFEATED".
+ * skull rush -> slow themed fire burst -> cracked skull -> ink splash ->
+ * heavy typewriter "DEFEATED" -> level-up card.
+ *
+ * This overlay is presentation-only. The timer and the next skull keep advancing behind it.
  */
 @Composable
 fun DefeatAnimationOverlay(
     darkMode: Boolean,
     eventId: Long,
+    defeatedLevel: Int,
+    nextLevel: Int,
+    nextMaxHp: Long,
     onFinished: () -> Unit,
 ) {
     val timeline = remember(eventId) { Animatable(0f) }
@@ -54,7 +63,13 @@ fun DefeatAnimationOverlay(
     val background = MaterialTheme.colorScheme.background
     val foreground = MaterialTheme.colorScheme.onBackground
     val inkColor = if (darkMode) Color.White else Color.Black
+
     val accentColor = if (darkMode) Color(0xFFFF2B2B) else Color(0xFF22D94F)
+    val middleFire = if (darkMode) Color(0xFFFF7A1A) else Color(0xFF7CFF43)
+    val hotCore = if (darkMode) Color(0xFFFFF0A6) else Color(0xFFF2FFD4)
+    val emberColor = if (darkMode) Color(0xFFFFB52E) else Color(0xFFD6FF45)
+    val outerFire = if (darkMode) Color(0xFF9E1111) else Color(0xFF087A32)
+
     val crackColor = if (darkMode) Color.Black else Color.White
     val defeatedText = stringResource(R.string.copy_defeated)
 
@@ -62,26 +77,31 @@ fun DefeatAnimationOverlay(
         timeline.snapTo(0f)
         timeline.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 8_800, easing = LinearEasing),
+            animationSpec = tween(durationMillis = 14_800, easing = LinearEasing),
         )
         currentOnFinished()
     }
 
     val t = timeline.value
-    val move = eased(phase(t, 0.00f, 0.10f))
-    val ink = eased(phase(t, 0.05f, 0.24f))
-    val inkFade = phase(t, 0.22f, 0.30f)
+    val move = eased(phase(t, 0.00f, 0.09f))
 
-    // Roughly 3.25 seconds of the 8.8 second sequence. The themed burst now visibly grows
-    // all the way from the center to beyond the screen corners before it starts fading.
-    val explosion = eased(phase(t, 0.20f, 0.57f))
-    val explosionFade = phase(t, 0.57f, 0.65f)
+    // The first black/white flood was intentionally removed. The first full-screen takeover
+    // is now the themed fire burst itself, and it gets about 3.7 seconds to reach the corners.
+    val explosion = eased(phase(t, 0.08f, 0.33f))
+    val explosionFade = phase(t, 0.33f, 0.39f)
 
-    val cleanStage = phase(t, 0.62f, 0.69f)
-    val cracked = eased(phase(t, 0.61f, 0.72f))
-    val splash = eased(phase(t, 0.70f, 0.80f))
-    val typing = phase(t, 0.76f, 0.94f)
-    val exit = phase(t, 0.95f, 1.00f)
+    val cleanStage = phase(t, 0.36f, 0.41f)
+    val cracked = eased(phase(t, 0.38f, 0.49f))
+    val splash = eased(phase(t, 0.45f, 0.54f))
+    val splashFade = phase(t, 0.74f, 0.82f)
+
+    // Roughly 3.55 seconds for eight letters: each hit has time to read as a separate impact.
+    val typing = phase(t, 0.52f, 0.76f)
+    val defeatedExit = phase(t, 0.78f, 0.84f)
+    val skullExit = phase(t, 0.76f, 0.83f)
+
+    val upgrade = eased(phase(t, 0.80f, 0.95f))
+    val exit = phase(t, 0.96f, 1.00f)
 
     val typedPosition = typing * defeatedText.length
     val visibleLetters = if (typing <= 0f) {
@@ -103,7 +123,6 @@ fun DefeatAnimationOverlay(
             .fillMaxSize()
             .graphicsLayer { alpha = 1f - exit }
             .pointerInput(eventId) {
-                // The defeat cut-in is intentionally modal for its short lifetime.
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
@@ -120,57 +139,20 @@ fun DefeatAnimationOverlay(
                 drawRect(background.copy(alpha = cleanStage.coerceIn(0f, 1f)))
             }
 
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val maxRadius = hypot(size.width, size.height) * 0.58f
-
-            if (ink > 0f && inkFade < 1f) {
-                drawCircle(
-                    color = inkColor.copy(alpha = 1f - inkFade),
-                    radius = maxRadius * ink,
-                    center = center,
-                )
-            }
-
             if (explosion > 0f && explosionFade < 1f) {
-                val fade = 1f - explosionFade
-                val grow = explosion.coerceIn(0f, 1f)
-                drawCircle(
-                    color = accentColor.copy(alpha = 0.94f * fade),
-                    radius = maxRadius * grow,
-                    center = center,
+                drawFireBurst(
+                    progress = explosion,
+                    opacity = 1f - explosionFade,
+                    outer = outerFire,
+                    accent = accentColor,
+                    middle = middleFire,
+                    core = hotCore,
+                    ember = emberColor,
                 )
-
-                // Keep the burst feeling explosive without making the main expansion itself fast.
-                // Rays lengthen with the same 3+ second growth, while their tips are intentionally
-                // uneven so the result is less like a perfect loading circle.
-                val rayCount = 20
-                for (i in 0 until rayCount) {
-                    val angle = (2.0 * PI * i / rayCount).toFloat()
-                    val variance = 0.72f + ((i * 37) % 11) / 20f
-                    val innerRadius = maxRadius * 0.07f * grow
-                    val outerRadius = maxRadius * variance * grow
-                    val half = 0.030f + (i % 4) * 0.007f
-                    val path = Path().apply {
-                        moveTo(
-                            center.x + cos(angle - half) * innerRadius,
-                            center.y + sin(angle - half) * innerRadius,
-                        )
-                        lineTo(
-                            center.x + cos(angle) * outerRadius,
-                            center.y + sin(angle) * outerRadius,
-                        )
-                        lineTo(
-                            center.x + cos(angle + half) * innerRadius,
-                            center.y + sin(angle + half) * innerRadius,
-                        )
-                        close()
-                    }
-                    drawPath(path, accentColor.copy(alpha = 0.62f * fade))
-                }
             }
         }
 
-        if (move < 1f || t < 0.30f) {
+        if (move < 1f || t < 0.39f) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -179,7 +161,7 @@ fun DefeatAnimationOverlay(
                     .graphicsLayer {
                         scaleX = 1f + 0.52f * move
                         scaleY = 1f + 0.52f * move
-                        alpha = (1f - phase(t, 0.22f, 0.30f)).coerceIn(0f, 1f)
+                        alpha = (1f - phase(t, 0.31f, 0.39f)).coerceIn(0f, 1f)
                     },
             ) {
                 SkullBackdrop(
@@ -190,16 +172,17 @@ fun DefeatAnimationOverlay(
             }
         }
 
-        if (splash > 0f) {
+        if (splash > 0f && splashFade < 1f) {
             Canvas(Modifier.fillMaxSize()) {
                 drawInkSplash(
                     progress = splash,
                     color = inkColor,
+                    opacity = 1f - splashFade,
                 )
             }
         }
 
-        if (cracked > 0f) {
+        if (cracked > 0f && skullExit < 1f) {
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -207,7 +190,7 @@ fun DefeatAnimationOverlay(
                     .graphicsLayer {
                         scaleX = 1.18f - 0.08f * cracked
                         scaleY = 1.18f - 0.08f * cracked
-                        alpha = cracked
+                        alpha = cracked * (1f - skullExit)
                     },
             ) {
                 SkullBackdrop(
@@ -224,15 +207,17 @@ fun DefeatAnimationOverlay(
             }
         }
 
-        if (visibleLetters > 0) {
+        if (visibleLetters > 0 && defeatedExit < 1f) {
             PixelText(
                 text = defeatedText.take(visibleLetters),
                 modifier = Modifier
                     .align(Alignment.Center)
+                    .offset(y = 30.dp)
                     .graphicsLayer {
                         scaleX = textScale
                         scaleY = textScale
                         translationX = textShake
+                        alpha = 1f - defeatedExit
                     },
                 color = if (darkMode) accentColor else foreground,
                 fontSize = 44.sp,
@@ -240,6 +225,80 @@ fun DefeatAnimationOverlay(
                 textAlign = TextAlign.Center,
             )
         }
+
+        if (upgrade > 0f) {
+            UpgradeStage(
+                defeatedLevel = defeatedLevel,
+                nextLevel = nextLevel,
+                nextMaxHp = nextMaxHp,
+                progress = upgrade,
+                accent = accentColor,
+                foreground = foreground,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
+    }
+}
+
+@Composable
+private fun UpgradeStage(
+    defeatedLevel: Int,
+    nextLevel: Int,
+    nextMaxHp: Long,
+    progress: Float,
+    accent: Color,
+    foreground: Color,
+    modifier: Modifier = Modifier,
+) {
+    val p = progress.coerceIn(0f, 1f)
+    val impact = (1f - p).coerceIn(0f, 1f)
+    val nextScale = 1f + 0.28f * impact * impact
+
+    Column(
+        modifier = modifier
+            .offset(y = 10.dp)
+            .graphicsLayer { alpha = p },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        PixelText(
+            text = "Lv.$nextLevel",
+            color = accent,
+            fontSize = 34.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.graphicsLayer {
+                scaleX = nextScale
+                scaleY = nextScale
+            },
+        )
+        Spacer(Modifier.height(5.dp))
+        PixelText(
+            text = "HP $nextMaxHp",
+            color = foreground,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(14.dp))
+        PixelText(
+            text = "↑",
+            color = accent,
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.graphicsLayer {
+                scaleY = 0.65f + 0.35f * p
+            },
+        )
+        Spacer(Modifier.height(8.dp))
+        PixelText(
+            text = "Lv.$defeatedLevel",
+            color = foreground.copy(alpha = 0.62f),
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
@@ -290,12 +349,109 @@ private fun CrackOverlay(
     }
 }
 
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawFireBurst(
+    progress: Float,
+    opacity: Float,
+    outer: Color,
+    accent: Color,
+    middle: Color,
+    core: Color,
+    ember: Color,
+) {
+    val p = progress.coerceIn(0f, 1f)
+    val a = opacity.coerceIn(0f, 1f)
+    if (p <= 0f || a <= 0f) return
+
+    val center = Offset(size.width * 0.50f, size.height * 0.50f)
+    val maxRadius = hypot(size.width, size.height) * 0.58f
+
+    fun flamePath(scale: Float, spikes: Int, wobble: Float): Path {
+        val path = Path()
+        for (i in 0 until spikes) {
+            val angle = (2.0 * PI * i / spikes).toFloat()
+            val deterministic = ((i * 37 + 11) % 17) / 16f
+            val tooth = if (i % 3 == 0) 1.26f else if (i % 3 == 1) 0.88f else 1.08f
+            val wave = 1f + wobble * sin(angle * 5f + deterministic * 2.7f)
+            val radius = maxRadius * p * scale * tooth * wave * (0.88f + deterministic * 0.22f)
+            val point = Offset(
+                center.x + cos(angle) * radius,
+                center.y + sin(angle) * radius,
+            )
+            if (i == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
+        }
+        path.close()
+        return path
+    }
+
+    // Dark outer flame, saturated themed body, warmer/lighter inner flame and a hot core.
+    drawPath(flamePath(1.00f, 38, 0.10f), outer.copy(alpha = 0.76f * a))
+    drawPath(flamePath(0.82f, 34, 0.13f), accent.copy(alpha = 0.92f * a))
+    drawPath(flamePath(0.58f, 30, 0.16f), middle.copy(alpha = 0.94f * a))
+    drawCircle(
+        color = core.copy(alpha = 0.92f * a),
+        radius = maxRadius * 0.24f * p,
+        center = center,
+    )
+
+    // Long radial spark trails make the event read as fire/light scattering rather than paint.
+    val sparkCount = 48
+    for (i in 0 until sparkCount) {
+        val angle = (2.0 * PI * i / sparkCount + ((i * 13) % 7) * 0.013).toFloat()
+        val speed = 0.54f + ((i * 29) % 31) / 42f
+        val distance = maxRadius * p * speed
+        val tip = Offset(
+            center.x + cos(angle) * distance,
+            center.y + sin(angle) * distance,
+        )
+        val trailLength = maxRadius * (0.035f + (i % 6) * 0.009f) * (0.55f + p * 0.45f)
+        val tail = Offset(
+            tip.x - cos(angle) * trailLength,
+            tip.y - sin(angle) * trailLength,
+        )
+        val sparkColor = when (i % 4) {
+            0 -> core
+            1 -> ember
+            2 -> middle
+            else -> accent
+        }
+        drawLine(
+            color = sparkColor.copy(alpha = (0.48f + (i % 5) * 0.08f) * a),
+            start = tail,
+            end = tip,
+            strokeWidth = (1.2.dp.toPx() + (i % 4) * 0.65.dp.toPx()),
+            cap = StrokeCap.Round,
+        )
+        drawCircle(
+            color = sparkColor.copy(alpha = 0.92f * a),
+            radius = (1.7.dp.toPx() + (i % 5) * 0.75.dp.toPx()) * (0.65f + 0.35f * p),
+            center = tip,
+        )
+    }
+
+    // A second ring of small glowing fragments adds depth between the core and the long sparks.
+    for (i in 0 until 24) {
+        val angle = (2.0 * PI * i / 24 + 0.11 * (i % 3)).toFloat()
+        val distance = maxRadius * p * (0.25f + ((i * 17) % 13) / 30f)
+        val fragment = Offset(
+            center.x + cos(angle) * distance,
+            center.y + sin(angle) * distance,
+        )
+        drawCircle(
+            color = if (i % 2 == 0) ember.copy(alpha = 0.68f * a) else core.copy(alpha = 0.58f * a),
+            radius = (2.5.dp.toPx() + (i % 4) * 1.5.dp.toPx()) * p,
+            center = fragment,
+        )
+    }
+}
+
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawInkSplash(
     progress: Float,
     color: Color,
+    opacity: Float,
 ) {
     val p = progress.coerceIn(0f, 1f)
-    if (p <= 0f) return
+    val a = opacity.coerceIn(0f, 1f)
+    if (p <= 0f || a <= 0f) return
 
     val center = Offset(size.width * 0.50f, size.height * 0.55f)
     val base = min(size.width, size.height) * 0.23f * p
@@ -322,9 +478,8 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawInkSplash(
         if (i == 0) blob.moveTo(point.x, point.y) else blob.lineTo(point.x, point.y)
     }
     blob.close()
-    drawPath(blob, color.copy(alpha = 0.88f))
+    drawPath(blob, color.copy(alpha = 0.88f * a))
 
-    // Satellite drops make the shape read as thrown ink rather than a decorative brush stroke.
     val dropAngles = floatArrayOf(-2.85f, -2.35f, -1.92f, -1.35f, -0.72f, -0.20f, 0.36f, 0.94f, 1.42f, 2.05f, 2.58f)
     for (i in dropAngles.indices) {
         val angle = dropAngles[i]
@@ -335,20 +490,19 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawInkSplash(
         )
         val radius = (3.5.dp.toPx() + (i % 5) * 2.2.dp.toPx()) * p
         drawCircle(
-            color = color.copy(alpha = 0.72f + (i % 3) * 0.06f),
+            color = color.copy(alpha = (0.72f + (i % 3) * 0.06f) * a),
             radius = radius,
             center = dropCenter,
         )
     }
 
-    // A few denser lobes keep the middle from looking like a simple star polygon.
     drawCircle(
-        color = color.copy(alpha = 0.78f),
+        color = color.copy(alpha = 0.78f * a),
         radius = base * 0.62f,
         center = center + Offset(-base * 0.34f, base * 0.10f),
     )
     drawCircle(
-        color = color.copy(alpha = 0.82f),
+        color = color.copy(alpha = 0.82f * a),
         radius = base * 0.54f,
         center = center + Offset(base * 0.30f, -base * 0.12f),
     )

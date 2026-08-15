@@ -206,8 +206,9 @@ class TimerRepository(context: Context) {
         if (prefs.getInt(KEY_GAME_RULES_VERSION, 0) == CURRENT_GAME_RULES_VERSION) return
 
         // 0.3.0 beta intentionally starts the skull game from scratch when the
-        // HP rules change. Old 1,800-HP / pre-rounded skull progress and any
-        // active timer tied to it are discarded instead of migrated.
+        // HP rules change. Old 1,800-HP / 10,000-HP / pre-rounded skull progress and any
+        // active timer tied to it are discarded instead of migrated. The current
+        // animation-test baseline starts cleanly from Lv.1 / 60 HP.
         prefs.edit()
             .remove(KEY_ACTIVE)
             .remove(LEGACY_KEY_SKULL_LEVEL)
@@ -325,7 +326,7 @@ class TimerRepository(context: Context) {
         private const val LEGACY_KEY_SKULL_LEVEL = "skull_level"
         private const val LEGACY_KEY_SKULL_HP = "skull_hp"
         private const val KEY_GAME_RULES_VERSION = "game_rules_version"
-        private const val CURRENT_GAME_RULES_VERSION = 2
+        private const val CURRENT_GAME_RULES_VERSION = 3
         private val lock = Any()
     }
 }

@@ -2,6 +2,7 @@ package com.idleskull.app
 
 import android.app.Application
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -38,6 +39,15 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     var defeatAnimationSerial: Long by mutableLongStateOf(0L)
+        private set
+
+    var defeatAnimationFromLevel: Int by mutableIntStateOf(1)
+        private set
+
+    var defeatAnimationToLevel: Int by mutableIntStateOf(2)
+        private set
+
+    var defeatAnimationNextMaxHp: Long by mutableLongStateOf(SkullRules.maxHp(2))
         private set
 
     private var observedTimerStartedAt: Long? = active?.startedAt
@@ -160,6 +170,11 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
         val projection = current.projectedSkullAt(now)
         if (projection.defeated > observedDefeatedCount) {
+            val defeatedLevel = current.skullAtStart.level + projection.defeated - 1
+            val nextLevel = defeatedLevel + 1
+            defeatAnimationFromLevel = defeatedLevel
+            defeatAnimationToLevel = nextLevel
+            defeatAnimationNextMaxHp = SkullRules.maxHp(nextLevel)
             observedDefeatedCount = projection.defeated
             defeatAnimationSerial += 1L
         }

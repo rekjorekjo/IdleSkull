@@ -86,18 +86,23 @@ fun HomeScreen(viewModel: TimerViewModel) {
         }
     }
 
-    val gameNow = (now / 5_000L) * 5_000L
+    val hpNow = (now / 1_000L) * 1_000L
+    val barNow = (now / 5_000L) * 5_000L
     val summaryNow = (now / 10_000L) * 10_000L
     val displayMs = active?.displayMsAt(now) ?: 0L
-    val projection = remember(gameNow, active, viewModel.skullState) {
-        viewModel.projectedSkull(gameNow)
+    val liveProjection = remember(hpNow, active, viewModel.skullState) {
+        viewModel.projectedSkull(hpNow)
     }
-    val skull = projection.state
+    val barProjection = remember(barNow, active, viewModel.skullState) {
+        viewModel.projectedSkull(barNow)
+    }
+    val liveSkull = liveProjection.state
+    val barSkull = barProjection.state
     val homeStatusText = when {
         active == null -> stringResource(R.string.copy_home_idle)
         active.status == TimerStatus.PAUSED -> stringResource(R.string.copy_home_paused)
         active.activity == ActivityType.SLACK -> stringResource(R.string.copy_home_slacking)
-        else -> stringResource(R.string.copy_home_grinding, skull.level)
+        else -> stringResource(R.string.copy_home_grinding, liveSkull.level)
     }
     val slackToday = remember(viewModel.sessions, active, summaryNow) {
         StatsEngine.today(viewModel.sessions, ActivityType.SLACK) +
@@ -117,7 +122,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
             alpha = if (viewModel.darkMode) 0.48f else 0.80f,
         )
         SkullEyeOverlay(
-            skull = skull,
+            skull = barSkull,
             darkMode = viewModel.darkMode,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -220,7 +225,7 @@ fun HomeScreen(viewModel: TimerViewModel) {
 
             Spacer(Modifier.height(20.dp))
             PixelText(
-                text = "SKULL Lv.${skull.level}",
+                text = "SKULL Lv.${liveSkull.level}",
                 modifier = Modifier.fillMaxWidth(),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
@@ -228,9 +233,11 @@ fun HomeScreen(viewModel: TimerViewModel) {
             )
             Spacer(Modifier.height(8.dp))
             SkullHealthBar(
-                skull = skull,
+                fillRatio = barSkull.hpRatio,
                 modifier = Modifier.fillMaxWidth(0.84f),
             )
+            Spacer(Modifier.height(5.dp))
+            SkullHpText(liveSkull)
 
             // Reserve the lower stage for the large skull artwork. The game status now sits
             // between the controls and the skull instead of competing with the timer header.
@@ -254,37 +261,34 @@ fun HomeScreen(viewModel: TimerViewModel) {
 
 @Composable
 private fun SkullHealthBar(
-    skull: SkullState,
+    fillRatio: Float,
     modifier: Modifier = Modifier,
 ) {
     val fill = Color(0xFF8E3030)
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        modifier = modifier
+            .height(18.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, PixelCutShape)
+            .border(2.dp, MaterialTheme.colorScheme.outline, PixelCutShape),
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxWidth(fillRatio.coerceIn(0f, 1f))
                 .height(18.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, PixelCutShape)
-                .border(2.dp, MaterialTheme.colorScheme.outline, PixelCutShape),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(skull.hpRatio)
-                    .height(18.dp)
-                    .background(fill, PixelCutShape),
-            )
-        }
-        Spacer(Modifier.height(5.dp))
-        PixelText(
-            text = "${skull.hp}/${skull.maxHp}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
+                .background(fill, PixelCutShape),
         )
     }
+}
+
+@Composable
+private fun SkullHpText(skull: SkullState) {
+    PixelText(
+        text = "${skull.hp}/${skull.maxHp}",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.Center,
+    )
 }
 
 @Composable

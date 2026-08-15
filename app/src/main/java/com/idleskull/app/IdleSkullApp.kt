@@ -83,6 +83,9 @@ fun IdleSkullApp(viewModel: TimerViewModel = viewModel()) {
                 DefeatAnimationOverlay(
                     darkMode = viewModel.darkMode,
                     eventId = defeatEvent,
+                    defeatedLevel = viewModel.defeatAnimationFromLevel,
+                    nextLevel = viewModel.defeatAnimationToLevel,
+                    nextMaxHp = viewModel.defeatAnimationNextMaxHp,
                     onFinished = { consumedDefeatAnimation = defeatEvent },
                 )
             }

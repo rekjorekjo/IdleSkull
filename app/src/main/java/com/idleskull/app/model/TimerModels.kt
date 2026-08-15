@@ -30,11 +30,12 @@ object SkullRules {
     const val MIN_VALID_SESSION_MS = 60_000L
 
     /**
-     * Lv.1 is a fixed 10,000 HP. From Lv.2 onward the raw curve is
-     * 10,000 * ln(n^PI), i.e. 10,000 * PI * ln(n).
+     * Beta animation-testing baseline: Lv.1 currently uses BASE_HP = 60.
+     * From Lv.2 onward the raw curve remains BASE_HP * PI * ln(n), then rounds
+     * down to the nearest 1,000 HP and never drops below BASE_HP.
      *
-     * The displayed/gameplay value is rounded down to the nearest 1,000 HP so
-     * every level has a clean-looking total such as 21,000 or 72,000.
+     * BASE_HP is intentionally temporary for rapid defeat-animation testing and
+     * can be restored to the final gameplay value later without changing the curve.
      */
     fun maxHp(level: Int): Long {
         val n = level.coerceAtLeast(1)
