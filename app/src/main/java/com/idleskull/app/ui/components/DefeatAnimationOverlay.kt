@@ -319,37 +319,8 @@ private fun UpgradeStage(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        PixelText(
-            text = if (crossedTheme) {
-                "${defeatedIdentity.theme.displayName} Boss 已被击败"
-            } else {
-                defeatedIdentity.title
-            },
-            color = if (crossedTheme) accent else foreground.copy(alpha = 0.72f),
-            fontSize = if (crossedTheme) 17.sp else 14.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        PixelText(
-            text = "Lv.$defeatedLevel",
-            color = foreground.copy(alpha = 0.62f),
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        PixelText(
-            text = "↓",
-            color = accent,
-            fontSize = 42.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.graphicsLayer {
-                scaleY = 0.65f + 0.35f * p
-            },
-        )
-        Spacer(Modifier.height(8.dp))
+        // Level-up reads from bottom to top: the defeated level stays below, while the
+        // newly unlocked higher level lands above it. The arrow therefore points upward.
         PixelText(
             text = nextIdentity.title,
             color = accent,
@@ -374,6 +345,37 @@ private fun UpgradeStage(
             text = "HP $nextMaxHp",
             color = foreground,
             fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        PixelText(
+            text = "↑",
+            color = accent,
+            fontSize = 42.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.graphicsLayer {
+                scaleY = 0.65f + 0.35f * p
+            },
+        )
+        Spacer(Modifier.height(8.dp))
+        PixelText(
+            text = "Lv.$defeatedLevel",
+            color = foreground.copy(alpha = 0.62f),
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(8.dp))
+        PixelText(
+            text = if (crossedTheme) {
+                "${defeatedIdentity.theme.displayName} Boss 已被击败"
+            } else {
+                defeatedIdentity.title
+            },
+            color = if (crossedTheme) accent else foreground.copy(alpha = 0.72f),
+            fontSize = if (crossedTheme) 17.sp else 14.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
