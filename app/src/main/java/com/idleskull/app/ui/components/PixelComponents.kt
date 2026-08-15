@@ -106,11 +106,7 @@ fun SkullBackdrop(
         contentDescription = null,
         modifier = modifier.alpha(alpha),
         contentScale = ContentScale.Fit,
-        colorFilter = if (identity == null) {
-            null
-        } else {
-            ColorFilter.tint(if (darkMode) Color.White else Color.Black)
-        },
+        colorFilter = null,
     )
 }
 
