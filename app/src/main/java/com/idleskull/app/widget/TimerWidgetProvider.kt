@@ -18,6 +18,7 @@ import android.widget.RemoteViews
 import com.idleskull.app.MainActivity
 import com.idleskull.app.R
 import com.idleskull.app.data.TimerRepository
+import com.idleskull.app.model.ActivityType
 import com.idleskull.app.model.EndReason
 import com.idleskull.app.model.TimerMode
 import com.idleskull.app.model.TimerStatus
@@ -50,7 +51,7 @@ class TimerWidgetProvider : AppWidgetProvider() {
             ACTION_TOGGLE -> {
                 repo.ensureCountdownComplete()
                 val active = repo.loadActive()
-                if (active == null) repo.startCountUp() else repo.pauseOrResume()
+                if (active == null) repo.startCountUp(ActivityType.SLACK) else repo.pauseOrResume()
                 refreshAll(context)
             }
             ACTION_STOP -> {
@@ -120,6 +121,8 @@ class TimerWidgetProvider : AppWidgetProvider() {
             val display = active.displayMsAt(nowWall)
             val status = when {
                 active.status == TimerStatus.PAUSED -> context.getString(R.string.copy_widget_paused)
+                active.activity == ActivityType.GRIND && active.mode == TimerMode.COUNT_DOWN -> context.getString(R.string.copy_widget_grind_countdown_running)
+                active.activity == ActivityType.GRIND -> context.getString(R.string.copy_widget_grind_running)
                 active.mode == TimerMode.COUNT_DOWN -> context.getString(R.string.copy_widget_countdown_running)
                 else -> context.getString(R.string.copy_widget_running)
             }

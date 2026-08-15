@@ -25,12 +25,13 @@ object StatsShareManager {
             file,
         )
 
+        val label = if (spec.activity == com.idleskull.app.model.ActivityType.SLACK) "摆烂记录" else "开卷记录"
         val sendIntent = Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "IdleSkull 摆烂记录")
+            putExtra(Intent.EXTRA_SUBJECT, "IdleSkull $label")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(sendIntent, "分享摆烂数据图"))
+        context.startActivity(Intent.createChooser(sendIntent, "分享$label"))
     }
 }

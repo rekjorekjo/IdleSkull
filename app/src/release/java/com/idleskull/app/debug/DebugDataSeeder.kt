@@ -1,8 +1,7 @@
 package com.idleskull.app.debug
 
-import com.idleskull.app.model.SlackingSession
+import com.idleskull.app.model.TimeSession
 
-/** Release APKs never expose synthetic history. */
 object DebugDataSeeder {
-    fun mergeForStats(realSessions: List<SlackingSession>): List<SlackingSession> = realSessions
+    fun mergeForStats(realSessions: List<TimeSession>): List<TimeSession> = realSessions
 }

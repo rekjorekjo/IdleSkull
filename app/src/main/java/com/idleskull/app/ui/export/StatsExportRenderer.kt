@@ -8,7 +8,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import com.idleskull.app.R
-import com.idleskull.app.model.SlackingSession
+import com.idleskull.app.model.ActivityType
+import com.idleskull.app.model.TimeSession
 import com.idleskull.app.ui.StatsEngine
 import com.idleskull.app.ui.screens.StatsRange
 import java.io.OutputStream
@@ -25,7 +26,8 @@ enum class StatsExportStyle { MONOCHROME, COLOR }
 data class StatsExportSpec(
     val range: StatsRange,
     val anchorDate: LocalDate,
-    val sessions: List<SlackingSession>,
+    val activity: ActivityType,
+    val sessions: List<TimeSession>,
     val darkMode: Boolean,
     val style: StatsExportStyle = StatsExportStyle.MONOCHROME,
 ) {
@@ -37,7 +39,8 @@ data class StatsExportSpec(
             StatsRange.YEAR -> anchorDate.year.toString()
         }
         val styleKey = if (style == StatsExportStyle.COLOR) "color" else "mono"
-        return "IdleSkull-${range.name.lowercase(Locale.ROOT)}-$key-$styleKey.png"
+        val activityKey = if (activity == ActivityType.SLACK) "slack" else "grind"
+        return "IdleSkull-$activityKey-${range.name.lowercase(Locale.ROOT)}-$key-$styleKey.png"
     }
 }
 
@@ -52,7 +55,7 @@ object StatsExportRenderer {
         val canvas = Canvas(bitmap)
         val palette = Palette(spec.darkMode, spec.style)
         val typeface = loadPixelTypeface(context)
-        val totals = StatsEngine.dailyTotals(spec.sessions)
+        val totals = StatsEngine.dailyTotals(spec.sessions, spec.activity)
 
         canvas.drawColor(palette.background)
 
@@ -64,7 +67,7 @@ object StatsExportRenderer {
             this.typeface = typeface
         }
 
-        drawText(canvas, paint, context.getString(R.string.copy_stats_title), MARGIN, 122f, 52f, palette.ink)
+        drawText(canvas, paint, if (spec.activity == ActivityType.SLACK) "摆烂记录" else "开卷记录", MARGIN, 122f, 52f, palette.ink)
         drawRule(canvas, paint, 182f, palette.outline)
 
         val period = periodText(spec.range, spec.anchorDate)
@@ -74,7 +77,7 @@ object StatsExportRenderer {
         drawText(
             canvas,
             paint,
-            "总摆烂  ${formatDuration(total)}",
+            "${if (spec.activity == ActivityType.SLACK) "总摆烂" else "总开卷"}  ${formatDuration(total)}",
             MARGIN,
             318f,
             58f,
@@ -82,7 +85,7 @@ object StatsExportRenderer {
         )
 
         when (spec.range) {
-            StatsRange.DAY -> drawDay(canvas, paint, palette, spec.sessions, spec.anchorDate, 404f)
+            StatsRange.DAY -> drawDay(canvas, paint, palette, spec.sessions, spec.activity, spec.anchorDate, 404f)
             StatsRange.WEEK -> drawWeek(canvas, paint, palette, totals, spec.anchorDate, 414f)
             StatsRange.MONTH -> drawMonth(canvas, paint, palette, totals, YearMonth.from(spec.anchorDate), 402f)
             StatsRange.YEAR -> drawYear(canvas, paint, palette, totals, spec.anchorDate.year, 400f)
@@ -104,7 +107,7 @@ object StatsExportRenderer {
 
     private fun exportHeight(spec: StatsExportSpec): Int {
         if (spec.range != StatsRange.DAY) return BASE_HEIGHT
-        val count = StatsEngine.sessionsOnDay(spec.sessions, spec.anchorDate).size
+        val count = StatsEngine.sessionsOnDay(spec.sessions, spec.anchorDate, spec.activity).size
         return max(BASE_HEIGHT, 620 + count * 106)
     }
 
@@ -112,15 +115,16 @@ object StatsExportRenderer {
         canvas: Canvas,
         paint: Paint,
         palette: Palette,
-        sessions: List<SlackingSession>,
+        sessions: List<TimeSession>,
+        activity: ActivityType,
         day: LocalDate,
         top: Float,
     ) {
-        val rows = StatsEngine.sessionsOnDay(sessions, day)
+        val rows = StatsEngine.sessionsOnDay(sessions, day, activity)
         drawText(canvas, paint, "当日记录", MARGIN, top, 28f, palette.ink)
         if (rows.isEmpty()) {
             drawPanel(canvas, paint, palette, MARGIN, top + 38f, WIDTH - MARGIN, top + 150f)
-            drawText(canvas, paint, "这一天没有摆烂记录。", MARGIN + 30f, top + 108f, 26f, palette.secondary)
+            drawText(canvas, paint, if (activity == ActivityType.SLACK) "这一天没有摆烂记录。" else "这一天没有开卷记录。", MARGIN + 30f, top + 108f, 26f, palette.secondary)
             return
         }
 

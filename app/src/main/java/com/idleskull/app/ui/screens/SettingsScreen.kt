@@ -35,6 +35,15 @@ import com.idleskull.app.ui.components.PixelText
 fun SettingsScreen(viewModel: TimerViewModel) {
     var showClearConfirm by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    var showExport by remember { mutableStateOf(false) }
+
+    if (showExport) {
+        ExportRecordsScreen(
+            viewModel = viewModel,
+            onBack = { showExport = false },
+        )
+        return
+    }
 
     if (showAbout) {
         AboutScreen(
@@ -70,6 +79,7 @@ fun SettingsScreen(viewModel: TimerViewModel) {
         PixelPanel {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 PixelText("数据", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                PixelButton("导出记录", { showExport = true }, Modifier.fillMaxWidth(), inverted = true)
                 PixelButton("清空历史记录", { showClearConfirm = true }, Modifier.fillMaxWidth())
             }
         }

@@ -4,14 +4,15 @@
     <string name="widget_name">计时器</string>
 
     <!-- 可直接修改的常用文案。改这里即可统一调整主要页面文字。 -->
-    <string name="copy_home_title">你又要开始摆烂了？</string>
-    <string name="copy_home_idle">还没有。至少现在没有。</string>
-    <string name="copy_home_running">摆烂中...</string>
-    <string name="copy_home_countdown_running">摆烂中...（倒计时）</string>
-    <string name="copy_home_paused">暂停摆烂</string>
-    <string name="copy_start">开摆！</string>
-    <string name="copy_pause">暂停摆烂</string>
-    <string name="copy_resume">继续摆烂</string>
+    <string name="copy_home_title">今天你卷还是摆？</string>
+    <string name="copy_home_idle">还没开始。至少现在没有。</string>
+    <string name="copy_home_slacking">摆烂计时中 · 骷髅正在回血……</string>
+    <string name="copy_home_grinding">开卷计时中 · 正在攻击 Lv.%1$d 骷髅</string>
+    <string name="copy_home_paused">暂停中 · 骷髅也歇会儿。</string>
+    <string name="copy_start_slack">开摆！</string>
+    <string name="copy_start_grind">开卷！</string>
+    <string name="copy_pause">暂停</string>
+    <string name="copy_resume">继续</string>
     <string name="copy_end">结束</string>
     <string name="copy_count_up">正计时</string>
     <string name="copy_count_down">倒计时</string>
@@ -22,16 +23,18 @@
     <string name="copy_minute">分</string>
     <string name="copy_second">秒</string>
 
-    <string name="copy_stats_title">摆烂记录</string>
+    <string name="copy_stats_title">时间记录</string>
     <string name="copy_export">导出</string>
     <string name="copy_export_footer">今天你又摆烂了？ · IdleSkull</string>
     <string name="copy_unnamed">未命名</string>
 
-    <string name="copy_widget_title">摆烂计时器</string>
-    <string name="copy_widget_waiting">暂未摆烂</string>
+    <string name="copy_widget_title">计时器</string>
+    <string name="copy_widget_waiting">暂未计时</string>
     <string name="copy_widget_running">摆烂中...</string>
-    <string name="copy_widget_paused">暂停摆烂</string>
+    <string name="copy_widget_paused">暂停中</string>
     <string name="copy_widget_countdown_running">摆烂中...（倒计时）</string>
+    <string name="copy_widget_grind_running">开卷中...</string>
+    <string name="copy_widget_grind_countdown_running">开卷中...（倒计时）</string>
     <string name="copy_widget_start">开摆！</string>
     <string name="copy_widget_stop">结束</string>
     <string name="copy_nav_timer">计时</string>
@@ -41,7 +44,7 @@
     <string name="copy_export_style_title">选择导出风格</string>
     <string name="copy_export_mono">黑白</string>
     <string name="copy_export_color">彩色</string>
-    <string name="copy_empty_day">这一天还没有摆烂记录。</string>
+    <string name="copy_empty_day">这一天还没有记录。</string>
 
     <string name="copy_update_found">发现新版本</string>
     <string name="copy_update_download_install">下载并安装</string>

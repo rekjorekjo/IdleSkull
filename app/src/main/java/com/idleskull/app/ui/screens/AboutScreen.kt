@@ -443,7 +443,7 @@ private fun readGeneratedRaw(context: android.content.Context, resourceName: Str
 
 private val PRIVACY_TEXT = """
 • IdleSkull 不要求注册账号，不包含广告，也不接入行为统计或云同步。
-• 计时状态、历史记录、记录名称和主题设置保存在设备本地。
+• 计时状态、摆 / 卷历史记录、记录名称、骷髅等级 / HP 和主题设置保存在设备本地。
 • 应用启动时会读取 GitHub 最新正式 Release 的更新清单检查新版本；更新清单不可用时会回退到 GitHub Releases API。发现新版本后仅发送系统通知，不会后台自动下载。只有用户主动点击“下载并安装”时，才交由 Android 系统下载管理器下载 APK；完成大小与 SHA-256 校验后，再由系统安装程序确认安装。
 • Android 13 及以上系统可能在首次使用时请求通知权限，用于新版本提醒。
 • 卸载应用或清除应用数据会删除本机保存的历史记录。

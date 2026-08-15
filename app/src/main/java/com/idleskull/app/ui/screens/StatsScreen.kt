@@ -1,6 +1,5 @@
 package com.idleskull.app.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,7 +31,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,16 +38,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.idleskull.app.TimerViewModel
-import com.idleskull.app.model.SlackingSession
+import com.idleskull.app.model.ActivityType
+import com.idleskull.app.model.TimeSession
 import com.idleskull.app.ui.StatsEngine
 import com.idleskull.app.ui.components.PixelButton
 import com.idleskull.app.ui.components.PixelCutShape
 import com.idleskull.app.ui.components.PixelPanel
 import com.idleskull.app.ui.components.PixelInputField
 import com.idleskull.app.ui.components.PixelText
-import com.idleskull.app.ui.export.StatsExportSpec
-import com.idleskull.app.ui.export.StatsExportStyle
-import com.idleskull.app.ui.export.StatsShareManager
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -61,13 +57,15 @@ enum class StatsRange { DAY, WEEK, MONTH, YEAR }
 
 @Composable
 fun StatsScreen(viewModel: TimerViewModel) {
-    val context = LocalContext.current
-    val sessions = viewModel.statsSessions
+    val allSessions = viewModel.statsSessions
     val today = LocalDate.now()
+
+    var activityName by rememberSaveable { mutableStateOf(ActivityType.SLACK.name) }
+    val activity = ActivityType.valueOf(activityName)
+    val sessions = remember(allSessions, activity) { allSessions.filter { it.activity == activity } }
 
     var rangeName by rememberSaveable { mutableStateOf(StatsRange.DAY.name) }
     val range = StatsRange.valueOf(rangeName)
-    var showExportStyle by remember { mutableStateOf(false) }
 
     // Each range remembers its own cursor. Switching from June's month view back to
     // day view no longer drags the day cursor into June.
@@ -93,31 +91,26 @@ fun StatsScreen(viewModel: TimerViewModel) {
         }
     }
 
-    val totals = remember(sessions) { StatsEngine.dailyTotals(sessions) }
+    val totals = remember(sessions, activity) { StatsEngine.dailyTotals(sessions, activity) }
 
     Column(
         Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PixelText(
-                stringResource(com.idleskull.app.R.string.copy_stats_title),
-                modifier = Modifier.weight(1f),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            PixelButton(
-                text = stringResource(com.idleskull.app.R.string.copy_export),
-                onClick = { showExportStyle = true },
-                padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                inverted = true,
-            )
-        }
+        PixelText(
+            stringResource(com.idleskull.app.R.string.copy_stats_title),
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+        )
         Spacer(Modifier.height(10.dp))
+
+        ActivityTypeSelector(
+            activity = activity,
+            onSelected = { activityName = it.name },
+        )
+
+        Spacer(Modifier.height(8.dp))
 
         StatsRangeSelector(
             range = range,
@@ -142,6 +135,7 @@ fun StatsScreen(viewModel: TimerViewModel) {
                     sessions = sessions,
                     totals = totals,
                     day = anchorDate,
+                    activity = activity,
                     onRename = viewModel::renameSession,
                 )
                 StatsRange.WEEK -> WeekStats(totals, anchorDate)
@@ -150,34 +144,56 @@ fun StatsScreen(viewModel: TimerViewModel) {
             }
         }
     }
+}
 
-    if (showExportStyle) {
-        ExportStyleDialog(
-            onDismiss = { showExportStyle = false },
-            onSelected = { style ->
-                showExportStyle = false
-                val spec = StatsExportSpec(
-                    range = range,
-                    anchorDate = anchorDate,
-                    sessions = sessions,
-                    darkMode = viewModel.darkMode,
-                    style = style,
-                )
-                val result = runCatching { StatsShareManager.share(context, spec) }
-                if (result.isFailure) {
-                    Toast.makeText(
-                        context,
-                        "生成分享图片失败：${result.exceptionOrNull()?.message ?: "未知错误"}",
-                        Toast.LENGTH_SHORT,
-                    ).show()
+
+@Composable
+private fun ActivityTypeSelector(
+    activity: ActivityType,
+    onSelected: (ActivityType) -> Unit,
+) {
+    val items = listOf(ActivityType.SLACK to "摆", ActivityType.GRIND to "卷")
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface, PixelCutShape)
+            .border(2.dp, MaterialTheme.colorScheme.outline, PixelCutShape)
+            .padding(2.dp),
+    ) {
+        Row(Modifier.fillMaxWidth()) {
+            items.forEachIndexed { index, (value, label) ->
+                val selected = value == activity
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                        .clickable { onSelected(value) }
+                        .padding(vertical = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    PixelText(
+                        label,
+                        color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
                 }
-            },
-        )
+                if (index < items.lastIndex) {
+                    Box(
+                        Modifier
+                            .width(2.dp)
+                            .height(38.dp)
+                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.55f)),
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun StatsRangeSelector(
+internal fun StatsRangeSelector(
     range: StatsRange,
     onRangeSelected: (StatsRange) -> Unit,
 ) {
@@ -234,7 +250,7 @@ private fun StatsRangeSelector(
 }
 
 @Composable
-private fun PeriodNavigator(
+internal fun PeriodNavigator(
     range: StatsRange,
     label: String,
     anchorDate: LocalDate,
@@ -571,53 +587,20 @@ private fun PixelYearInputDialog(
 }
 
 @Composable
-private fun ExportStyleDialog(
-    onDismiss: () -> Unit,
-    onSelected: (StatsExportStyle) -> Unit,
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = PixelCutShape,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 0.dp,
-            shadowElevation = 0.dp,
-            modifier = Modifier.fillMaxWidth().border(2.dp, MaterialTheme.colorScheme.outline, PixelCutShape),
-        ) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                PixelText(stringResource(com.idleskull.app.R.string.copy_export_style_title), fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PixelButton(
-                        stringResource(com.idleskull.app.R.string.copy_export_mono),
-                        { onSelected(StatsExportStyle.MONOCHROME) },
-                        Modifier.weight(1f),
-                        inverted = true,
-                    )
-                    PixelButton(
-                        stringResource(com.idleskull.app.R.string.copy_export_color),
-                        { onSelected(StatsExportStyle.COLOR) },
-                        Modifier.weight(1f),
-                    )
-                }
-                PixelButton(stringResource(com.idleskull.app.R.string.copy_cancel), onDismiss, Modifier.fillMaxWidth(), inverted = true)
-            }
-        }
-    }
-}
-
-@Composable
 private fun DayStats(
-    sessions: List<SlackingSession>,
+    sessions: List<TimeSession>,
     totals: Map<LocalDate, Long>,
     day: LocalDate,
+    activity: ActivityType,
     onRename: (Long, String) -> Unit,
 ) {
-    val daySessions = StatsEngine.sessionsOnDay(sessions, day)
+    val daySessions = StatsEngine.sessionsOnDay(sessions, day, activity)
     val total = totals[day] ?: 0L
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { SummaryPanel("总摆烂", total, daySessions.size) }
+        item { SummaryPanel(if (activity == ActivityType.SLACK) "总摆烂" else "总开卷", total, daySessions.size) }
         if (daySessions.isEmpty()) {
             item { PixelPanel { PixelText(stringResource(com.idleskull.app.R.string.copy_empty_day), fontSize = 11.sp) } }
         } else {
@@ -807,7 +790,7 @@ private fun SummaryPanel(title: String, total: Long, activeDaysOrCount: Int) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SessionRow(
-    session: SlackingSession,
+    session: TimeSession,
     onRename: (Long, String) -> Unit,
 ) {
     var showRename by remember(session.id) { mutableStateOf(false) }
@@ -831,7 +814,7 @@ private fun SessionRow(
                 )
                 Spacer(Modifier.height(4.dp))
                 PixelText(
-                    "${start.format(DateTimeFormatter.ofPattern("HH:mm"))} → ${end.format(DateTimeFormatter.ofPattern("HH:mm"))}",
+                    "${if (session.activity == ActivityType.SLACK) "摆" else "卷"} · ${start.format(DateTimeFormatter.ofPattern("HH:mm"))} → ${end.format(DateTimeFormatter.ofPattern("HH:mm"))}",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                 )
@@ -873,7 +856,7 @@ private fun RenameSessionDialog(
                 Modifier.padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                PixelText("给这次摆烂起个名字", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                PixelText("给这次记录起个名字", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it.take(30) },
@@ -893,7 +876,7 @@ private fun RenameSessionDialog(
 }
 
 
-private fun periodLabel(range: StatsRange, anchor: LocalDate): String {
+internal fun periodLabel(range: StatsRange, anchor: LocalDate): String {
     val today = LocalDate.now()
     return when (range) {
         StatsRange.DAY -> if (anchor == today) {
@@ -929,14 +912,14 @@ private fun weekdayLabel(date: LocalDate): String = when (date.dayOfWeek.value) 
     else -> "日"
 }
 
-private fun shiftAnchor(range: StatsRange, date: LocalDate, amount: Long): LocalDate = when (range) {
+internal fun shiftAnchor(range: StatsRange, date: LocalDate, amount: Long): LocalDate = when (range) {
     StatsRange.DAY -> date.plusDays(amount)
     StatsRange.WEEK -> date.plusWeeks(amount)
     StatsRange.MONTH -> date.plusMonths(amount)
     StatsRange.YEAR -> date.plusYears(amount)
 }
 
-private fun isCurrentPeriod(range: StatsRange, anchor: LocalDate): Boolean {
+internal fun isCurrentPeriod(range: StatsRange, anchor: LocalDate): Boolean {
     val today = LocalDate.now()
     return when (range) {
         StatsRange.DAY -> anchor >= today

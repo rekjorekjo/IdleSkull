@@ -1,27 +1,23 @@
 package com.idleskull.app.debug
 
+import com.idleskull.app.model.ActivityType
 import com.idleskull.app.model.EndReason
-import com.idleskull.app.model.SlackingSession
 import com.idleskull.app.model.TimeSegment
+import com.idleskull.app.model.TimeSession
 import com.idleskull.app.model.TimerMode
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.math.absoluteValue
 
-/**
- * In-memory deterministic sample history used only by debug builds.
- *
- * It is deliberately NOT written into TimerRepository. This means existing local
- * sessions can coexist with the sample history, while release builds never see it.
- */
+/** Debug-only in-memory sample history. Nothing is persisted. */
 object DebugDataSeeder {
-    private val samples: List<SlackingSession> by lazy { buildSamples() }
+    private val samples: List<TimeSession> by lazy { buildSamples() }
 
-    fun mergeForStats(realSessions: List<SlackingSession>): List<SlackingSession> =
+    fun mergeForStats(realSessions: List<TimeSession>): List<TimeSession> =
         (realSessions + samples).sortedByDescending { it.startedAt }
 
-    private fun buildSamples(): List<SlackingSession> {
+    private fun buildSamples(): List<TimeSession> {
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now()
         return buildList {
@@ -43,10 +39,14 @@ object DebugDataSeeder {
                         .atZone(zone).toInstant().toEpochMilli()
                     val end = start + durationMinutes * 60_000L
                     val mode = if ((fingerprint + index) % 4L == 0L) TimerMode.COUNT_DOWN else TimerMode.COUNT_UP
-                    val names = listOf("未命名", "午后发呆", "刷手机", "临时摸鱼", "躺一会儿")
+                    val activity = if ((fingerprint + index * 3L) % 5L < 2L) ActivityType.GRIND else ActivityType.SLACK
+                    val slackNames = listOf("未命名", "午后发呆", "刷手机", "临时摸鱼", "躺一会儿")
+                    val grindNames = listOf("高数", "写代码", "背单词", "复习", "专注一下")
+                    val names = if (activity == ActivityType.SLACK) slackNames else grindNames
                     add(
-                        SlackingSession(
+                        TimeSession(
                             id = id--,
+                            activity = activity,
                             mode = mode,
                             startedAt = start,
                             endedAt = end,

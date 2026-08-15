@@ -1,9 +1,8 @@
-IdleSkull 0.2.24-beta
-
-• 更新机制改为参考 The Day 的稳定实现：优先读取 GitHub `releases/latest/download/latest.json`，失败时仅回退一次 `/releases/latest` API。
-• 移除 Atom feed、Releases 列表扫描和 Release Asset API 等多层更新发现逻辑，减少网络请求与中间故障点。
-• APK 下载改由 Android 系统 DownloadManager 管理，App 退到后台或界面重建时下载状态仍可继续维护。
-• 下载完成后校验 APK 文件大小与 SHA-256，通过后再交给 Android 系统安装程序。
-• 修复失败状态残留：用户再次手动检查更新时会清理上一次失败的下载状态，不再被旧失败记录卡住。
-• Beta tag 继续使用 `vX.Y.Z-beta`，但 GitHub Release 必须作为普通 Release 发布（不要勾选 prerelease），以保证 GitHub `latest` 路径可用。
-• 版本更新为 0.2.24-beta（versionCode 27）。
+• 0.3.0 重构为“卷 / 摆”双计时体系：首页同一行提供“开摆！”与“开卷！”两个互斥入口。
+• 新增骷髅等级与 HP：开卷每秒造成 1 HP 伤害，摆烂每秒恢复 1 HP；击破后进入更高血量的下一级。
+• 首页新增 `SKULL Lv.x`、实时血条与 `当前 HP / 最大 HP`，当天汇总改为同时显示摆烂和开卷时长。
+• 眼窝光效改为由当前 HP 驱动：深色红眼、浅色阴森绿眼；HP 越高光效越强。
+• 日志页改名“时间记录”，新增“摆 / 卷”切换，并继续支持日 / 周 / 月 / 年统计与长按重命名。
+• 导出入口移至“设置 → 数据 → 导出记录”，可选择摆 / 卷、统计范围、日期以及黑白 / 彩色样式。
+• 0.3.0-beta 使用新的 0.3 记录数据结构，不兼容 0.2.x Beta 的旧计时记录。
+• 版本更新为 0.3.0-beta（versionCode 28）。

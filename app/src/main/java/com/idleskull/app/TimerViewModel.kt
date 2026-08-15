@@ -8,8 +8,11 @@ import androidx.lifecycle.AndroidViewModel
 import com.idleskull.app.data.TimerRepository
 import com.idleskull.app.debug.DebugDataSeeder
 import com.idleskull.app.model.ActiveTimer
+import com.idleskull.app.model.ActivityType
 import com.idleskull.app.model.EndReason
-import com.idleskull.app.model.SlackingSession
+import com.idleskull.app.model.SkullProjection
+import com.idleskull.app.model.SkullState
+import com.idleskull.app.model.TimeSession
 import com.idleskull.app.widget.TimerWidgetProvider
 
 class TimerViewModel(application: Application) : AndroidViewModel(application) {
@@ -18,7 +21,10 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     var active: ActiveTimer? by mutableStateOf(repository.loadActive())
         private set
 
-    var sessions: List<SlackingSession> by mutableStateOf(repository.loadSessions())
+    var sessions: List<TimeSession> by mutableStateOf(repository.loadSessions())
+        private set
+
+    var skullState: SkullState by mutableStateOf(repository.loadSkullState())
         private set
 
     var darkMode: Boolean by mutableStateOf(repository.isDarkMode())
@@ -27,19 +33,21 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     var lastCountdownMs: Long by mutableStateOf(repository.lastCountdownMs())
         private set
 
-    /** Debug builds overlay deterministic sample history for charts without touching local data. */
-    val statsSessions: List<SlackingSession>
+    val statsSessions: List<TimeSession>
         get() = DebugDataSeeder.mergeForStats(sessions)
 
-    fun startCountUp() {
-        active = repository.startCountUp()
+    fun projectedSkull(now: Long = System.currentTimeMillis()): SkullProjection =
+        active?.projectedSkullAt(now) ?: SkullProjection(skullState, 0)
+
+    fun startCountUp(activity: ActivityType) {
+        active = repository.startCountUp(activity)
         refreshWidget()
     }
 
-    fun startCountdown(plannedMs: Long) {
+    fun startCountdown(activity: ActivityType, plannedMs: Long) {
         repository.setLastCountdownMs(plannedMs)
         lastCountdownMs = plannedMs
-        active = repository.startCountdown(plannedMs)
+        active = repository.startCountdown(activity, plannedMs)
         refreshWidget()
     }
 
@@ -50,21 +58,21 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
 
     fun pauseOrResume() {
         active = repository.pauseOrResume()
-        if (active == null) sessions = repository.loadSessions()
+        if (active == null) reloadStateOnly()
         refreshWidget()
     }
 
     fun end() {
         repository.finish(EndReason.MANUAL)
         active = null
-        sessions = repository.loadSessions()
+        reloadStateOnly()
         refreshWidget()
     }
 
     fun tick(now: Long = System.currentTimeMillis()) {
         if (repository.ensureCountdownComplete(now)) {
             active = null
-            sessions = repository.loadSessions()
+            reloadStateOnly()
             refreshWidget()
         }
     }
@@ -78,7 +86,7 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun reload() {
         repository.ensureCountdownComplete()
         active = repository.loadActive()
-        sessions = repository.loadSessions()
+        reloadStateOnly()
         darkMode = repository.isDarkMode()
         lastCountdownMs = repository.lastCountdownMs()
         refreshWidget()
@@ -92,6 +100,19 @@ class TimerViewModel(application: Application) : AndroidViewModel(application) {
     fun clearSessions() {
         repository.clearSessions()
         sessions = emptyList()
+    }
+
+    fun resetGame() {
+        repository.resetGame()
+        active = null
+        sessions = emptyList()
+        skullState = repository.loadSkullState()
+        refreshWidget()
+    }
+
+    private fun reloadStateOnly() {
+        sessions = repository.loadSessions()
+        skullState = repository.loadSkullState()
     }
 
     private fun refreshWidget() {
